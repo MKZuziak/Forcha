@@ -73,16 +73,81 @@ class FederatedModel:
                 params_to_update.append(param)
 
         # Choosing an optimizer based on settings
+        # ADAM
         if self.settings['optimizer'] == "Adam":
-            raise NotImplementedError("Using Adam Optimizer has not been implemented yet.")
-            # TODO #self.optimizer = torch.optim.Adam(...
+            if settings.get('betas'):
+                betas = settings['betas']
+            else:
+                betas = (0.9, 0.999)
+            
+            if settings.get('weight-decay'):
+                weight_decay = settings['weight_decay']
+            else:
+                weight_decay = 0
+
+            if settings.get('amsgrad'):
+                amsgrad = settings['amsgrad']
+            else:
+                amsgrad = False
+            
+            self.optimizer = optim.Adam(
+                params_to_update,
+                lr = self.settings['learning_rate'],
+                betas=betas,
+                weight_decay=weight_decay,
+                amsgrad=amsgrad
+            )
+        
+        # SGD
         elif self.settings['optimizer'] == "SGD":
-            raise NotImplementedError("Using SGD Optimizer has not been implemented yet.")
-            #TODO # self.optimizer = torch.optim.SGD(...
+            if settings.get('momentum'):
+                momentum = settings['momentum']
+            else:
+                momentum = 0
+            
+            if settings.get('weight-decay'):
+                weight_decay = settings['weight_decay']
+            else:
+                weight_decay = 0
+
+            if settings.get('dampening'):
+                dampening = settings['dampening']
+            else:
+                dampening = 0
+
+            if settings.get('nesterov'):
+                nesterov = settings['nesterov']
+            else:
+                nesterov = False
+            
+            self.optimizer = optim.SGD(
+                params_to_update,
+                lr = self.settings['learning_rate'],
+                momentum=momentum,
+                weight_decay=weight_decay,
+                dampening=dampening,
+                nesterov=nesterov
+            )
+        
+        
         elif self.settings['optimizer'] == "RMS":
+            if settings.get('momentum'):
+                momentum = settings['momentum']
+            else:
+                momentum = 0
+            if settings.get('alpha'):
+                alpha = settings['alpha']
+            else:
+                alpha = 0.99
+            if settings.get('weight-decay'):
+                weight_decay = settings['weight_decay']
+            else:
+                weight_decay = 0
             self.optimizer = optim.RMSprop(
                 params_to_update,
-                lr=self.settings["learning_rate"],)
+                lr=self.settings["learning_rate"],
+                alpha=alpha,
+                weight_decay=weight_decay)
         else:
             raise ModelException("The provided optimizer name may be incorrect or not implemeneted.\
             Please provide list[train_set, test_set] or list[test_set]")
@@ -251,8 +316,8 @@ class FederatedModel:
         -------
             Tuple[float, float]: Loss and accuracy on the training set.
         """
-
         criterion = nn.CrossEntropyLoss()
+
         running_loss = 0.0
         total_correct = 0
         total = 0
@@ -270,6 +335,10 @@ class FederatedModel:
             if isinstance(data, list):
                 data = data[0]
             
+            # Zero the gradients
+            self.optimizer.zero_grad()
+            self.net.zero_grad()
+            
             # Placing the data on the device
             data, target = data.to(self.device), target.to(self.device)
             # forward pass, backward pass and optimization
@@ -282,12 +351,18 @@ class FederatedModel:
             total_correct += correct
             total += target.size(0)
 
-            self.optimizer.zero_grad()
-            self.net.zero_grad()
+            # self.optimizer.zero_grad()
+            # self.net.zero_grad()
+            
             loss.backward()
+            # Optional: gradient clipping
+            if self.settings.get('gradient_clip'):
+                torch.nn.utils.clip_grad_norm_(self.net.parameters(), self.settings['gradient_clip'])
+
             self.optimizer.step()
-            self.optimizer.zero_grad()
-            self.net.zero_grad()
+            
+            # self.optimizer.zero_grad()
+            # self.net.zero_grad()
         
             # Emptying the cuda_cache
             if torch.cuda.is_available():

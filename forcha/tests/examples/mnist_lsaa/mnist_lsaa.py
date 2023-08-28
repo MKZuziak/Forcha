@@ -50,9 +50,13 @@ def simulation():
         "nodes":{
         "local_epochs": 2,
         "model_settings": {
-            "optimizer": "RMS",
-            "batch_size": 32,
-            "learning_rate": 0.001}}}
+            "optimizer": "Adam",
+            "betas": (0.9, 0.8),
+            "weight_decay": 1e-4,
+            "amsgrad": True,
+            "batch_size": 64,
+            "learning_rate": 0.001,
+            "gradient_clip": 2}}}
     
     settings = init_settings(
          orchestrator_type='evaluator',
