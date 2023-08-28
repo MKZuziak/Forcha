@@ -1,5 +1,6 @@
 from forcha.components.evaluator.or_evaluator import OR_Evaluator
 from forcha.components.evaluator.lsaa_evaluator import LSAA
+from forcha.components.evaluator.exlsaa_evaluator import EXLSAA
 from forcha.components.evaluator.sample_evaluator import Sample_Evaluator
 from forcha.components.evaluator.sample_evaluator import Sample_Shapley_Evaluator
 from forcha.models.pytorch.federated_model import FederatedModel
@@ -102,6 +103,12 @@ class Evaluation_Manager():
             self.compiled_flags.append('LSAA')
         else:
             self.flag_lsaa_evaluator = False
+        # Flag: Extended LSAA
+        if settings.get("EXTENDED_LSAA"):
+            self.flag_exlsaa_evaluator = True
+            self.compiled_flags.append('EXLSAA')
+        else:
+            self.flag_exlsaa_evaluator = False
         
         # Sets up a flag for each available method of score preservation
         # Flag: Preservation of partial results (for In-Sample Methods)
@@ -138,7 +145,14 @@ class Evaluation_Manager():
                 raise #TODO: Custom error
             except KeyError as k:
                 raise #TODO: Lacking configuration error
-
+        if self.flag_exlsaa_evaluator == True:
+            try:
+                self.exlsaa_evaluator = EXLSAA(nodes=nodes, iterations=iterations)
+                self.search_length = settings['line_search_length']
+            except NameError as e:
+                raise #TODO: Custom error
+            except KeyError as k:
+                raise #TODO: Lacking configuration error
 
         # Sets up the scheduler
         if settings.get("scheduler"):
@@ -331,6 +345,32 @@ class Evaluation_Manager():
                             for col, value in debug_values.items():
                                 csv_writer.writerow([col, value, iteration])
 
+        #EXLSAA Method
+        if self.flag_exlsaa_evaluator:
+            if iteration in self.scheduler['EXLSAA']: # Checks scheduler
+                debug_values = self.exlsaa_evaluator.update_lsaa(gradients = gradients,
+                                                                 nodes_in_sample = nodes_in_sample,
+                                                                 iteration = iteration,
+                                                                 search_length = self.search_length,
+                                                                 optimizer = self.previous_optimizer,
+                                                                 final_model = self.updated_c_model,
+                                                                 previous_model = self.previous_c_model)
+            
+        # Preserving debug values (if enabled)
+                if self.full_debug:
+                    if iteration == 0:
+                        with open(os.path.join(self.full_debug_path, 'col_values_debug_exlsaa.csv'), 'a+', newline='') as csv_file:
+                            field_names = ['coalition', 'value', 'iteration']
+                            csv_writer = csv.writer(csv_file)
+                            csv_writer.writerow(field_names)
+                            for col, value in debug_values.items():
+                                csv_writer.writerow([col, value, iteration])
+                    else:
+                        with open(os.path.join(self.full_debug_path, 'col_values_debug_exlsaa.csv'), 'a+', newline='') as csv_file:
+                            csv_writer = csv.writer(csv_file)
+                            for col, value in debug_values.items():
+                                csv_writer.writerow([col, value, iteration])
+
 
     def finalize_tracking(self,
                           path: str = None):
@@ -371,6 +411,11 @@ class Evaluation_Manager():
             partial_lsaa, lsaa = self.lsaa_evaluator.calculate_final_lsaa()
             results['partial']['partial_lsaa'] = partial_lsaa
             results['full']['lsaa'] = lsaa
+        
+        if self.exlsaa_evaluator:
+            partial_exlsaa, exlsaa = self.exlsaa_evaluator.calculate_final_lsaa()
+            results['partial']['partial_exlsaa'] = partial_exlsaa
+            results['full']['exlsaa'] = exlsaa
         
         if self.preserve_partial_results == True:
             for metric, values in results['partial'].items():

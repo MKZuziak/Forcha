@@ -55,7 +55,7 @@ class Evaluator_Settings(FedoptSettings):
                                               "allow_default flag was set to False. Please provide evaluator settings or"\
                                                 "set the allow_default flag to True or disable the evaluator.")
         
-        # Sanity check for the evaluator
+        # Sanity check for the evaluator        
         try:
             self.evaluator_settings["LOO_OR"]
         except KeyError:
@@ -88,6 +88,24 @@ class Evaluator_Settings(FedoptSettings):
         except KeyError:
             if self.allow_defualt:
                 self.evaluator_settings["IN_SAMPLE_SHAP"] = False
+                print("WARNING! In-sample Shapley was disabled by default.")
+            else:
+                raise SettingsObjectException("Evaluator object is missing the key properties!")
+        
+        try:
+            self.evaluator_settings["LSAA"]
+        except KeyError:
+            if self.allow_defualt:
+                self.evaluator_settings["LSAA"] = False
+                print("WARNING! LSAA was disabled by default.")
+            else:
+                raise SettingsObjectException("Evaluator object is missing the key properties!")
+        
+        try:
+            self.evaluator_settings["EXTENDED_LSAA"]
+        except KeyError:
+            if self.allow_defualt:
+                self.evaluator_settings["EXTENDED_LSAA"] = False
                 print("WARNING! In-sample Shapley was disabled by default.")
             else:
                 raise SettingsObjectException("Evaluator object is missing the key properties!")
@@ -128,6 +146,8 @@ class Evaluator_Settings(FedoptSettings):
         evaluator["Shapley_OR"] = False
         evaluator["IN_SAMPLE_LOO"] = True
         evaluator["IN_SAMPLE_SHAP"] = False
+        evaluator["LSAA"] = False
+        evaluator['EXTENDED_LSAA'] = False
         evaluator["preserve_evaluation"] = {
             "preserve_partial_results": True,
             "preserve_final_results": True
@@ -150,6 +170,8 @@ class Evaluator_Settings(FedoptSettings):
         Enable One-Round Shapley: {self.evaluator_settings['Shapley_OR']},
         Enable In-Sample Leave-one-out: {self.evaluator_settings['IN_SAMPLE_LOO']},
         Enable In-Sample Shapley: {self.evaluator_settings['IN_SAMPLE_SHAP']},
+        Enable LSAA: {self.evaluator_settings['LSAA']},
+        Enable Extended LSAA: {self.evaluator_settings['EXTENDED_LSAA']}
         Preserve evaluation: {self.evaluator_settings["preserve_evaluation"]},
         Enable full debug mode: {self.evaluator_settings["full_debug"]}
         """
