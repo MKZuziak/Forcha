@@ -30,10 +30,8 @@ def simulation():
                 "form_archive": True
                 },
             "optimizer": {
-                "name": "FedAdagard",
-                "learning_rate": 0.1,
-                "tau": 0.01,
-                "b1": 0.1},
+                "name": "Simple",
+                "learning_rate": 0.1},
             "evaluator" : {
             "LOO_OR": False,
             "Shapley_OR": False,
@@ -41,7 +39,8 @@ def simulation():
             "IN_SAMPLE_SHAP": False,
             "LSAA": True,
             "EXTENDED_LSAA": True,
-            "line_search_length": 3,
+            "ADAPTIVE_LSAA": True,
+            "line_search_length": 1,
             "preserve_evaluation": {
                 "preserve_partial_results": True,
                 "preserve_final_results": True},
@@ -54,7 +53,7 @@ def simulation():
             "betas": (0.9, 0.8),
             "weight_decay": 1e-4,
             "amsgrad": True,
-            "batch_size": 64,
+            "batch_size": 32,
             "learning_rate": 0.001,
             "gradient_clip": 2}}}
     

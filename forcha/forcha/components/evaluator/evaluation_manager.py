@@ -1,6 +1,7 @@
 from forcha.components.evaluator.or_evaluator import OR_Evaluator
 from forcha.components.evaluator.lsaa_evaluator import LSAA
 from forcha.components.evaluator.exlsaa_evaluator import EXLSAA
+from forcha.components.evaluator.adlsaa import ADLSAA
 from forcha.components.evaluator.sample_evaluator import Sample_Evaluator
 from forcha.components.evaluator.sample_evaluator import Sample_Shapley_Evaluator
 from forcha.models.pytorch.federated_model import FederatedModel
@@ -109,6 +110,11 @@ class Evaluation_Manager():
             self.compiled_flags.append('EXLSAA')
         else:
             self.flag_exlsaa_evaluator = False
+        if settings.get("ADAPTIVE_LSAA"):
+            self.flag_adlsaa_evaluator = True
+            self.compiled_flags.append("ADLSAA")
+        else:
+            self.flag_adlsaa_evaluator = False
         
         # Sets up a flag for each available method of score preservation
         # Flag: Preservation of partial results (for In-Sample Methods)
@@ -130,13 +136,13 @@ class Evaluation_Manager():
             try:
                 self.sample_evaluator = Sample_Evaluator(nodes=nodes, iterations=iterations)
             except NameError as e:
-                raise Sample_Evaluator_Init_Exception
+                raise Sample_Evaluator_Init_Exception # TODO
         # Initialization: Shapley-InSample Method
         if self.flag_samplesh_evaluator == True:
             try:
                 self.samplesh_evaluator = Sample_Shapley_Evaluator(nodes = nodes, iterations=iterations)
             except NameError as e:
-                raise Sample_Evaluator_Init_Exception
+                raise Sample_Evaluator_Init_Exception # TODO
         if self.flag_lsaa_evaluator == True:
             try:
                 self.lsaa_evaluator = LSAA(nodes = nodes, iterations = iterations)
@@ -148,6 +154,14 @@ class Evaluation_Manager():
         if self.flag_exlsaa_evaluator == True:
             try:
                 self.exlsaa_evaluator = EXLSAA(nodes=nodes, iterations=iterations)
+                self.search_length = settings['line_search_length']
+            except NameError as e:
+                raise #TODO: Custom error
+            except KeyError as k:
+                raise #TODO: Lacking configuration error
+        if self.flag_adlsaa_evaluator == True:
+            try:
+                self.adlsaa_evaluator = ADLSAA(nodes=nodes, iterations=iterations)
                 self.search_length = settings['line_search_length']
             except NameError as e:
                 raise #TODO: Custom error
@@ -370,6 +384,31 @@ class Evaluation_Manager():
                             csv_writer = csv.writer(csv_file)
                             for col, value in debug_values.items():
                                 csv_writer.writerow([col, value, iteration])
+        #ADLSAA Method
+        if self.flag_adlsaa_evaluator:
+            if iteration in self.scheduler['ADLSAA']: # Checks scheduler
+                debug_values = self.adlsaa_evaluator.update_lsaa(gradients = gradients,
+                                                                 nodes_in_sample = nodes_in_sample,
+                                                                 iteration = iteration,
+                                                                 search_length = self.search_length,
+                                                                 optimizer = self.previous_optimizer,
+                                                                 final_model = self.updated_c_model,
+                                                                 previous_model = self.previous_c_model)
+            
+        # Preserving debug values (if enabled)
+                if self.full_debug:
+                    if iteration == 0:
+                        with open(os.path.join(self.full_debug_path, 'col_values_debug_adlsaa.csv'), 'a+', newline='') as csv_file:
+                            field_names = ['coalition', 'value', 'iteration']
+                            csv_writer = csv.writer(csv_file)
+                            csv_writer.writerow(field_names)
+                            for col, value in debug_values.items():
+                                csv_writer.writerow([col, value, iteration])
+                    else:
+                        with open(os.path.join(self.full_debug_path, 'col_values_debug_adlsaa.csv'), 'a+', newline='') as csv_file:
+                            csv_writer = csv.writer(csv_file)
+                            for col, value in debug_values.items():
+                                csv_writer.writerow([col, value, iteration])
 
 
     def finalize_tracking(self,
@@ -416,6 +455,11 @@ class Evaluation_Manager():
             partial_exlsaa, exlsaa = self.exlsaa_evaluator.calculate_final_lsaa()
             results['partial']['partial_exlsaa'] = partial_exlsaa
             results['full']['exlsaa'] = exlsaa
+        
+        if self.adlsaa_evaluator:
+            partial_adlsaa, adlsaa = self.adlsaa_evaluator.calculate_final_lsaa()
+            results['partial']['partial_adlsaa'] = partial_adlsaa
+            results['full']['adlsaa'] = adlsaa
         
         if self.preserve_partial_results == True:
             for metric, values in results['partial'].items():

@@ -70,3 +70,14 @@ forcha/tests/examples/mnist_lsaa/archiver_from_08_24_2023__16_39_12/results/orch
 forcha/tests/examples/mnist_lsaa/archiver_from_08_24_2023__16_39_12/results/partial_exlsaa.csv
 forcha/tests/examples/mnist_lsaa/archiver_from_08_24_2023__16_39_12/results/partial_lsaa.csv
 forcha/tests/examples/mnist_lsaa/archiver_from_08_24_2023__16_39_12/results/partial_psi.csv
+forcha/tests/examples/mnist_lsaa/archiver_from_09_03_2023__12_43_07/results/adlsaa.csv
+forcha/tests/examples/mnist_lsaa/col_values_debug_adlsaa.csv
+forcha/tests/examples/mnist_lsaa/archiver_from_09_03_2023__12_43_07/results/exlsaa.csv
+forcha/tests/examples/mnist_lsaa/archiver_from_09_03_2023__12_43_07/results/central_on_local_results.csv
+forcha/tests/examples/mnist_lsaa/archiver_from_09_03_2023__12_43_07/results/lsaa.csv
+forcha/tests/examples/mnist_lsaa/archiver_from_09_03_2023__12_43_07/results/orchestrator_results.csv
+forcha/tests/examples/mnist_lsaa/archiver_from_09_03_2023__12_43_07/results/partial_adlsaa.csv
+forcha/tests/examples/mnist_lsaa/archiver_from_09_03_2023__12_43_07/results/partial_exlsaa.csv
+forcha/tests/examples/mnist_lsaa/archiver_from_09_03_2023__12_43_07/results/partial_lsaa.csv
+forcha/tests/examples/mnist_lsaa/archiver_from_09_03_2023__12_43_07/results/partial_psi.csv
+forcha/tests/examples/mnist_lsaa/archiver_from_09_03_2023__12_43_07/results/psi.csv
