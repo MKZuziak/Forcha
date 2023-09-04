@@ -193,6 +193,29 @@ class Evaluation_Manager():
             self.number_of_workers = settings['number_of_workers']
     
     
+    def set_leading_method(self,
+                           name: str):
+        """Sets the leading method of evaluation.
+        This method will be returned in subseqeunt
+        'self.get_last_results' calls. 
+        
+        Parameters
+        ----------
+        name (str): name of the method that should be set to main.
+        Returns
+        -------
+        None
+        """
+        if name == "LOO":
+            self.default_method = self.or_evaluator
+        elif name == "LSAA":
+            self.default_method = self.lsaa_evaluator
+        elif name == "EXLSAA":
+            self.default_method = self.exlsaa_evaluator
+        else:
+            raise NameError # TODO: Add custom error.
+    
+    
     def preserve_previous_model(self,
                                 previous_model: FederatedModel):
         """Preserves the model from the previous round by copying 
@@ -228,6 +251,7 @@ class Evaluation_Manager():
        """
         self.updated_c_model = copy.deepcopy(updated_model)
     
+    
     def preserve_previous_optimizer(self,
                                     previous_optimizer: Optimizers):
         """Preserves the Optimizer from the previous round by copying 
@@ -244,6 +268,21 @@ class Evaluation_Manager():
         None
         """
         self.previous_optimizer = copy.deepcopy(previous_optimizer)
+    
+    
+    def get_last_results(self,
+                         iteration: int) -> tuple[int, dict]:
+        """Returns the results of the last evaluation 
+        round
+
+        Parameters
+        iteration (int): curret iteration
+        ----------
+        Returns
+        tuple[int, dict]: tuple containing a last round id and a dict mapping nodes' id to the result.
+        None
+        """
+        return self.default_method.return_last_value(iteration = iteration)
 
     
     def track_results(self,
@@ -409,6 +448,8 @@ class Evaluation_Manager():
                             csv_writer = csv.writer(csv_file)
                             for col, value in debug_values.items():
                                 csv_writer.writerow([col, value, iteration])
+        
+        # Returning the contribution values (if enabled)
 
 
     def finalize_tracking(self,

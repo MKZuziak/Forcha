@@ -218,8 +218,8 @@ class Orchestrator():
             weights = {}
             # Sampling nodes and asynchronously apply the function
             sampled_nodes = sample_nodes(nodes_green, 
-                                            sample_size=sample_size, 
-                                            orchestrator_logger=self.orchestrator_logger) # SAMPLING FUNCTION -> CHANGE IF NEEDED
+                                         sample_size=sample_size, 
+                                         orchestrator_logger=self.orchestrator_logger) # SAMPLING FUNCTION -> CHANGE IF NEEDED
             if self.batch_job:
                 for batch in Helpers.chunker(sampled_nodes, size=self.batch):
                     with Pool(sample_size) as pool:

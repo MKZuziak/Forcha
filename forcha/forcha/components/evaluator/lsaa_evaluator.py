@@ -113,6 +113,21 @@ class LSAA():
        
         if return_coalitions == True:
                 return recorded_values
+    
+    def return_last_value(self,
+                          iteration:int) -> dict:
+        """Method used to return the results of the last evaluation round.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        tuple[dict[int: dict], dict[int: float]]
+        """
+        values = self.partial_lsaa[iteration]
+        return values
         
     
     def calculate_final_lsaa(self) -> tuple[dict[int: dict], dict[int: float]]:
