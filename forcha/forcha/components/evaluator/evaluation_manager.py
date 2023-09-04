@@ -446,17 +446,17 @@ class Evaluation_Manager():
             results['partial']['partial_shap'] = partial_shap
             results['full']['shap'] = shap
         
-        if self.lsaa_evaluator:
+        if self.flag_lsaa_evaluator:
             partial_lsaa, lsaa = self.lsaa_evaluator.calculate_final_lsaa()
             results['partial']['partial_lsaa'] = partial_lsaa
             results['full']['lsaa'] = lsaa
         
-        if self.exlsaa_evaluator:
+        if self.flag_exlsaa_evaluator:
             partial_exlsaa, exlsaa = self.exlsaa_evaluator.calculate_final_lsaa()
             results['partial']['partial_exlsaa'] = partial_exlsaa
             results['full']['exlsaa'] = exlsaa
         
-        if self.adlsaa_evaluator:
+        if self.flag_adlsaa_evaluator:
             partial_adlsaa, adlsaa = self.adlsaa_evaluator.calculate_final_lsaa()
             results['partial']['partial_adlsaa'] = partial_adlsaa
             results['full']['adlsaa'] = adlsaa
