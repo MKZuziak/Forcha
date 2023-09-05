@@ -1,10 +1,10 @@
 """This example envisages traning a common Convolutional Neural Network on a number of distributed datasets using
-classical FedOpt algorithm. Local datasets are uniformly distributed, but some of them are transformed (noised) 
-according to predefined schema. During the training, three contribution metrics are defined: LOO, LSAA and EXLSAA."""
+classical FedAdagard algorithm. Local datasets are uniformly distributed, but some of them are transformed (noised) 
+according to predefined schema. During the training, no contribution are calculated."""
 
 import pickle
 import os
-from forcha.components.orchestrator.evaluator_orchestrator import Evaluator_Orchestrator
+from forcha.components.orchestrator.fedopt_orchestrator import Fedopt_Orchestrator
 from forcha.components.settings.init_settings import init_settings
 from forcha.models.pytorch.mnist import MNIST_CNN
 
@@ -62,7 +62,7 @@ def simulation():
          initialization_method='dict',
          dict_settings = config,
          allow_default=True)
-    with open(r'C:\Users\macie\OneDrive\Dokumenty\GitHub\Forcha\forcha\tests\examples\mnist_lsaa\MNIST_3_dataset', 'rb') as path:
+    with open(r'C:\Users\macie\OneDrive\Dokumenty\GitHub\Forcha\forcha\tests\examples\mnist_fedopt\MNIST_3_dataset', 'rb') as path:
         data = pickle.load(path)
     # DATA: Selecting data for the orchestrator
     orchestrator_data = data[0]
@@ -70,7 +70,7 @@ def simulation():
     nodes_data = data[1]
     model = MNIST_CNN()
         
-    orchestrator = Evaluator_Orchestrator(settings)
+    orchestrator = Fedopt_Orchestrator(settings)
     
     orchestrator.prepare_orchestrator(
          model=model, 

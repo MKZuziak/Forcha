@@ -45,16 +45,7 @@ class Adjustive_Settings(Evaluator_Settings):
             Default to None
         Returns
         -------
-        None"""
-        try:
-            self.seed = dict_settings['random_seed']
-        except KeyError:
-            if self.allow_defualt:
-                self.seed = 42
-            else:
-                raise SettingsObjectException("Adjusting orchestrator requires random seed to prepare a generator object.\
-                                                Provide a valid random seed or allow default parameters.")
-        
+        None"""        
         try:
             self.sampling_array = dict_settings['sampling_array']
             if self.sampling_array == 'uniform':
@@ -102,7 +93,6 @@ class Adjustive_Settings(Evaluator_Settings):
         -------
         dict"""
         string = f"""
-        Random Seed: {self.seed},
         Sampling array: {self.sampling_array},
         Action: {self.action},
         Delta: {self.delta},

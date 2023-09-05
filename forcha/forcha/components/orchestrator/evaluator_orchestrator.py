@@ -1,7 +1,6 @@
 from forcha.components.orchestrator.generic_orchestrator import Orchestrator
 from forcha.utils.orchestrations import create_nodes, sample_nodes, train_nodes
 from forcha.utils.computations import Aggregators
-from forcha.utils.loggers import Loggers
 from forcha.utils.orchestrations import create_nodes, sample_nodes, train_nodes
 from forcha.utils.optimizers import Optimizers
 from forcha.components.evaluator.evaluation_manager import Evaluation_Manager
@@ -10,7 +9,8 @@ from forcha.components.settings.settings import Settings
 from forcha.utils.helpers import Helpers
 import datasets
 import copy
-from multiprocessing import Pool, Manager
+from multiprocessing import Pool
+import numpy as np
 
 
 from multiprocessing import set_start_method
@@ -83,6 +83,9 @@ class Evaluator_Orchestrator(Orchestrator):
                 archive_manager = self.settings.archiver_settings,
                 logger = self.orchestrator_logger)
         
+        # Initialization of the generator object    
+        self.generator = np.random.default_rng(self.settings.seed)
+        
         # Initializing an instance of the Optimizer class object.
         optimizer_settings = self.settings.optimizer_settings # Dict containing instructions for the optimizer, dict.
         Optim = Optimizers(weights = self.central_model.get_weights(),
@@ -113,8 +116,8 @@ class Evaluator_Orchestrator(Orchestrator):
             evaluation_manager.preserve_previous_optimizer(previous_optimizer = Optim)
             # Sampling nodes and asynchronously apply the function
             sampled_nodes = sample_nodes(nodes_green, 
-                                         sample_size=sample_size, 
-                                         orchestrator_logger=self.orchestrator_logger) # SAMPLING FUNCTION -> CHANGE IF NEEDED
+                                         sample_size=sample_size,
+                                         generator=self.generator) # SAMPLING FUNCTION -> CHANGE IF NEEDED
             if self.batch_job:
                 for batch in Helpers.chunker(sampled_nodes, size=self.batch):
                     with Pool(sample_size) as pool:
