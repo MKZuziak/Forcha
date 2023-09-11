@@ -3,6 +3,7 @@ from forcha.utils.orchestrations import create_nodes, sample_nodes, train_nodes
 from forcha.utils.computations import Aggregators
 from forcha.utils.orchestrations import create_nodes, sample_nodes, train_nodes
 from forcha.utils.optimizers import Optimizers
+from forcha.components.evaluator.parallel.parallel_manager import Parallel_Manager
 from forcha.components.evaluator.evaluation_manager import Evaluation_Manager
 from forcha.components.archiver.archive_manager import Archive_Manager
 from forcha.components.settings.settings import Settings
@@ -44,7 +45,7 @@ class Evaluator_Orchestrator(Orchestrator):
        -------
        None
         """
-        super().__init__(settings, kwargs=kwargs)
+        super().__init__(settings, **kwargs)
     
 
     def train_protocol(self,
@@ -92,10 +93,15 @@ class Evaluator_Orchestrator(Orchestrator):
                            settings=optimizer_settings)
         
         # Initializing the Evaluation Manager
-        evaluation_manager = Evaluation_Manager(settings = self.settings.evaluator_settings,
+        evaluation_manager = Parallel_Manager(settings = self.settings.evaluator_settings,
                                                 model = self.central_model,
                                                 nodes = nodes,
                                                 iterations = iterations)
+        if self.full_debug:
+            debug_manager = Evaluation_Manager(settings = self.settings.evaluator_settings,
+                                               model = self.central_model,
+                                               nodes = nodes,
+                                               iterations = iterations)
         
         # Creating (empty) federated nodes.
         nodes_green = create_nodes(nodes, 
@@ -111,9 +117,14 @@ class Evaluator_Orchestrator(Orchestrator):
         for iteration in range(iterations):
             self.orchestrator_logger.info(f"Iteration {iteration}")
             gradients = {}
+            
             # Evaluation step: preserving the last version of the model and optimizer
             evaluation_manager.preserve_previous_model(previous_model = self.central_model)
             evaluation_manager.preserve_previous_optimizer(previous_optimizer = Optim)
+            if self.full_debug:
+                debug_manager.preserve_previous_model(previous_model = self.central_model)
+                debug_manager.preserve_previous_optimizer(previous_optimizer = Optim)
+            
             # Sampling nodes and asynchronously apply the function
             sampled_nodes = sample_nodes(nodes_green, 
                                          sample_size=sample_size,
@@ -134,7 +145,7 @@ class Evaluator_Orchestrator(Orchestrator):
                         node_id, model_gradients = result.get()
                         gradients[node_id] = copy.deepcopy(model_gradients)
             
-            grad_copy = copy.deepcopy(gradients) #TODO DEBUG DEBUG
+            grad_copy = copy.deepcopy(gradients) #TODO Copy for the evaluation, since Agg.compute_average changes the weights
             # Computing the average
             grad_avg = Aggregators.compute_average(gradients) # AGGREGATING FUNCTION -> CHANGE IF NEEDED
             # Upadting the weights using gradients and momentum
@@ -142,12 +153,18 @@ class Evaluator_Orchestrator(Orchestrator):
                                                     delta=grad_avg)
             # Updating the orchestrator
             self.central_model.update_weights(updated_weights)
+            
             # Evaluation step: preserving the updated central model
             evaluation_manager.preserve_updated_model(updated_model = self.central_model)
             # Evaluation step: calculating all the marginal contributions
             evaluation_manager.track_results(gradients = grad_copy,
                                              nodes_in_sample = sampled_nodes,
                                              iteration = iteration)
+            if self.full_debug:
+                debug_manager.preserve_updated_model(updated_model=self.central_model)
+                debug_manager.track_results(gradients = grad_copy,
+                                            nodes_in_sample = sampled_nodes,
+                                            iteration = iteration)
             # Updating the nodes
             for node in nodes_green:
                 node.model.update_weights(updated_weights)         
@@ -157,9 +174,9 @@ class Evaluator_Orchestrator(Orchestrator):
                 archive_manager.archive_training_results(iteration = iteration,
                                                         central_model=self.central_model,
                                                         nodes=nodes_green)
-        
-        
         # Evaluation step: Calling evaluation manager to preserve all steps
         results = evaluation_manager.finalize_tracking(path = archive_manager.metrics_savepath)
+        if self.full_debug:
+            debug_manager.finalize_tracking(path = archive_manager.metrics_savepath)
         self.orchestrator_logger.critical("Training complete")
         return 0

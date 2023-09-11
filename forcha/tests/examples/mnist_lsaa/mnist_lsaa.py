@@ -16,8 +16,8 @@ def simulation():
          "orchestrator": {
             "iterations": 5,
             "number_of_nodes": 3,
-            "sample_size": 2,
-            'enable_archiver': False,
+            "sample_size": 3,
+            'enable_archiver': True,
             "archiver":{
                 "root_path": os.getcwd(),
                 "orchestrator": True,
@@ -39,12 +39,12 @@ def simulation():
             "IN_SAMPLE_SHAP": False,
             "LSAA": True,
             "EXTENDED_LSAA": True,
-            "ADAPTIVE_LSAA": True,
+            "ADAPTIVE_LSAA": False,
             "line_search_length": 1,
             "preserve_evaluation": {
                 "preserve_partial_results": True,
                 "preserve_final_results": True},
-            "full_debug": False,
+            "full_debug": True,
             "number_of_workers": 50}},
         "nodes":{
         "local_epochs": 1,
@@ -70,7 +70,7 @@ def simulation():
     nodes_data = data[1]
     model = MNIST_CNN()
         
-    orchestrator = Evaluator_Orchestrator(settings)
+    orchestrator = Evaluator_Orchestrator(settings, full_debug = True)
     
     orchestrator.prepare_orchestrator(
          model=model, 

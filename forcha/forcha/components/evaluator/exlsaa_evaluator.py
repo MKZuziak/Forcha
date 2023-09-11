@@ -33,7 +33,6 @@ class EXLSAA(LSAA):
                     optimizer: Optimizers,
                     search_length: int,
                     iteration: int,
-                    final_model: FederatedModel,
                     previous_model: FederatedModel,
                     return_coalitions: bool = True):
             """Method used to track_results after each training round.

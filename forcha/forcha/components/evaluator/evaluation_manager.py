@@ -341,21 +341,12 @@ class Evaluation_Manager():
         # Shapley-InSample Method
         if self.flag_samplesh_evaluator:
             if iteration in self.scheduler['in_sample_shap']: # Checks scheduler
-                if self.multip:
-                    debug_values = self.samplesh_evaluator.update_shap_multip(gradients = gradients,
-                                                               nodes_in_sample = nodes_in_sample,
-                                                               iteration = iteration,
-                                                               optimizer = self.previous_optimizer,
-                                                               previous_model = self.previous_c_model,
-                                                               return_coalitions = self.full_debug,
-                                                               number_of_workers = self.number_of_workers)
-                else:
-                    debug_values = self.samplesh_evaluator.update_shap(gradients = gradients,
-                                                        nodes_in_sample = nodes_in_sample,
-                                                        iteration = iteration,
-                                                        optimizer = self.previous_optimizer,
-                                                        previous_model = self.previous_c_model,
-                                                        return_coalitions = self.full_debug)
+                debug_values = self.samplesh_evaluator.update_shap(gradients = gradients,
+                                                    nodes_in_sample = nodes_in_sample,
+                                                    iteration = iteration,
+                                                    optimizer = self.previous_optimizer,
+                                                    previous_model = self.previous_c_model,
+                                                    return_coalitions = self.full_debug)
 
                 # Preserving debug values (if enabled)
                 if self.full_debug:
@@ -406,7 +397,6 @@ class Evaluation_Manager():
                                                                  iteration = iteration,
                                                                  search_length = self.search_length,
                                                                  optimizer = self.previous_optimizer,
-                                                                 final_model = self.updated_c_model,
                                                                  previous_model = self.previous_c_model)
             
         # Preserving debug values (if enabled)
@@ -479,28 +469,28 @@ class Evaluation_Manager():
         
         if self.flag_sample_evaluator:
             partial_psi, psi = self.sample_evaluator.calculate_final_psi()
-            results['partial']['partial_psi'] = partial_psi
-            results['full']['psi'] = psi
+            results['partial']['partial_psi_debug'] = partial_psi
+            results['full']['psi_debug'] = psi
         
         if self.flag_samplesh_evaluator:
             partial_shap, shap = self.samplesh_evaluator.calculate_final_shap()
-            results['partial']['partial_shap'] = partial_shap
-            results['full']['shap'] = shap
+            results['partial']['partial_shap_debug'] = partial_shap
+            results['full']['shap_debug'] = shap
         
-        if self.lsaa_evaluator:
+        if self.flag_lsaa_evaluator:
             partial_lsaa, lsaa = self.lsaa_evaluator.calculate_final_lsaa()
-            results['partial']['partial_lsaa'] = partial_lsaa
-            results['full']['lsaa'] = lsaa
+            results['partial']['partial_lsaa_debug'] = partial_lsaa
+            results['full']['lsaa_debug'] = lsaa
         
-        if self.exlsaa_evaluator:
+        if self.flag_exlsaa_evaluator:
             partial_exlsaa, exlsaa = self.exlsaa_evaluator.calculate_final_lsaa()
-            results['partial']['partial_exlsaa'] = partial_exlsaa
-            results['full']['exlsaa'] = exlsaa
+            results['partial']['partial_exlsaa_debug'] = partial_exlsaa
+            results['full']['exlsaa_debug'] = exlsaa
         
-        if self.adlsaa_evaluator:
+        if self.flag_adlsaa_evaluator:
             partial_adlsaa, adlsaa = self.adlsaa_evaluator.calculate_final_lsaa()
-            results['partial']['partial_adlsaa'] = partial_adlsaa
-            results['full']['adlsaa'] = adlsaa
+            results['partial']['partial_adlsaa_debug'] = partial_adlsaa
+            results['full']['adlsaa_debug'] = adlsaa
         
         if self.preserve_partial_results == True:
             for metric, values in results['partial'].items():

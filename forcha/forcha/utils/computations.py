@@ -20,7 +20,7 @@ class Aggregators:
         for params in gradients.values():
             for key in params:
                 if results.get(key) is None:
-                    results[key] = params[key]
+                    results[key] = params[key] #Here we could add copy and deepcopy
                 else:
                     results[key] += params[key]
 
