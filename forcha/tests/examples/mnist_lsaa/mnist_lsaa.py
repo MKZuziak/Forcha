@@ -55,14 +55,15 @@ def simulation():
             "amsgrad": True,
             "batch_size": 32,
             "learning_rate": 0.001,
-            "gradient_clip": 2}}}
+            "gradient_clip": 2,
+            "FORCE_CPU": False}}}
     
     settings = init_settings(
          orchestrator_type='evaluator',
          initialization_method='dict',
          dict_settings = config,
          allow_default=True)
-    with open(r'C:\Users\macie\OneDrive\Dokumenty\GitHub\Forcha\forcha\tests\examples\mnist_lsaa\MNIST_3_dataset', 'rb') as path:
+    with open(r'/home/mzuziak/snap/snapd-desktop-integration/83/Documents/Forcha/forcha/tests/examples/mnist_lsaa/MNIST_3_dataset', 'rb') as path:
         data = pickle.load(path)
     # DATA: Selecting data for the orchestrator
     orchestrator_data = data[0]
