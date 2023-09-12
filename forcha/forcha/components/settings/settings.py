@@ -138,6 +138,17 @@ class Settings():
                 "batch size ('batch_size': str) and learning rate ('learning rate' : float).")
         
         
+        # Random Seed
+        try:
+            self.seed = dict_settings['random_seed']
+        except KeyError:
+            if self.allow_defualt:
+                self.seed = 42
+            else:
+                raise SettingsObjectException("Adjusting orchestrator requires random seed to prepare a generator object.\
+                                                Provide a valid random seed or allow default parameters.")
+        
+        
         # MODEL SETTINGS INITIALIZATION
         try:
             self.nodes_settings['model_settings'] = dict_settings['nodes']['model_settings']
@@ -460,7 +471,8 @@ class Settings():
         number_of_nodes: {self.number_of_nodes},
         local_warm_start: {self.local_warm_start},
         sample_size:    {self.sample_size},
-        enable_archiver: {self.enable_archiver}                    
+        enable_archiver: {self.enable_archiver},
+        random_seed: {self.seed}            
         """
         print(string) #TODO: Switch for logger
     

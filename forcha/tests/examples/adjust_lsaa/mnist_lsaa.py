@@ -4,7 +4,7 @@ according to predefined schema. During the training, three contribution metrics 
 
 import pickle
 import os
-from forcha.components.orchestrator.evaluator_orchestrator import Evaluator_Orchestrator
+from forcha.components.orchestrator.adjustive_orchestrator import Adjustive_Orchestrator
 from forcha.components.settings.init_settings import init_settings
 from forcha.models.pytorch.mnist import MNIST_CNN
 
@@ -16,7 +16,7 @@ def simulation():
          "orchestrator": {
             "iterations": 5,
             "number_of_nodes": 3,
-            "sample_size": 3,
+            "sample_size": 2,
             'enable_archiver': True,
             "archiver":{
                 "root_path": os.getcwd(),
@@ -33,21 +33,15 @@ def simulation():
                 "name": "Simple",
                 "learning_rate": 0.1},
             "evaluator" : {
-            "LOO_OR": False,
-            "Shapley_OR": False,
-            "IN_SAMPLE_LOO": True,
-            "IN_SAMPLE_SHAP": False,
             "LSAA": True,
-            "EXTENDED_LSAA": True,
-            "ADAPTIVE_LSAA": False,
-            "line_search_length": 1,
+            "line_search_length": 3,
             "preserve_evaluation": {
                 "preserve_partial_results": True,
                 "preserve_final_results": True},
             "full_debug": True,
             "number_of_workers": 50}},
         "nodes":{
-        "local_epochs": 1,
+        "local_epochs": 3,
         "model_settings": {
             "optimizer": "Adam",
             "betas": (0.9, 0.8),
@@ -58,11 +52,11 @@ def simulation():
             "gradient_clip": 2}}}
     
     settings = init_settings(
-         orchestrator_type='evaluator',
+         orchestrator_type='adjustive',
          initialization_method='dict',
          dict_settings = config,
          allow_default=True)
-    with open(r'C:\Users\macie\OneDrive\Dokumenty\GitHub\Forcha\forcha\tests\examples\mnist_lsaa\MNIST_3_dataset', 'rb') as path:
+    with open(r'C:\Users\macie\OneDrive\Dokumenty\GitHub\Forcha\forcha\tests\examples\adjust_lsaa\MNIST_3_dataset', 'rb') as path:
         data = pickle.load(path)
     # DATA: Selecting data for the orchestrator
     orchestrator_data = data[0]
@@ -70,7 +64,7 @@ def simulation():
     nodes_data = data[1]
     model = MNIST_CNN()
         
-    orchestrator = Evaluator_Orchestrator(settings, full_debug = True)
+    orchestrator = Adjustive_Orchestrator(settings)
     
     orchestrator.prepare_orchestrator(
          model=model, 

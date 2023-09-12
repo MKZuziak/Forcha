@@ -12,6 +12,7 @@ from multiprocessing import Pool
 from torch import nn
 from forcha.utils.debugger import log_gpu_memory
 from forcha.utils.helpers import Helpers
+import numpy as np
 
 # set_start_method set to 'spawn' to ensure compatibility across platforms.
 from multiprocessing import set_start_method
@@ -197,6 +198,9 @@ class Orchestrator():
             archive_manager = Archive_Manager(
                 archive_manager = self.settings.archiver_settings,
                 logger = self.orchestrator_logger)
+        
+        # Initialization of the generator object    
+        self.generator = np.random.default_rng(self.settings.seed)
 
         # Creating (empty) federated nodes.
         nodes_green = create_nodes(nodes, 
@@ -218,8 +222,8 @@ class Orchestrator():
             weights = {}
             # Sampling nodes and asynchronously apply the function
             sampled_nodes = sample_nodes(nodes_green, 
-                                            sample_size=sample_size, 
-                                            orchestrator_logger=self.orchestrator_logger) # SAMPLING FUNCTION -> CHANGE IF NEEDED
+                                         sample_size=sample_size,
+                                         generator=self.generator) # SAMPLING FUNCTION -> CHANGE IF NEEDED
             if self.batch_job:
                 for batch in Helpers.chunker(sampled_nodes, size=self.batch):
                     with Pool(sample_size) as pool:

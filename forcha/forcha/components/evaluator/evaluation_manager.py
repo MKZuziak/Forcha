@@ -1,13 +1,13 @@
 from forcha.components.evaluator.or_evaluator import OR_Evaluator
 from forcha.components.evaluator.lsaa_evaluator import LSAA
 from forcha.components.evaluator.exlsaa_evaluator import EXLSAA
-from forcha.components.evaluator.adlsaa import ADLSAA
 from forcha.components.evaluator.sample_evaluator import Sample_Evaluator
 from forcha.components.evaluator.sample_evaluator import Sample_Shapley_Evaluator
 from forcha.models.pytorch.federated_model import FederatedModel
 from forcha.exceptions.evaluatorexception import Sample_Evaluator_Init_Exception
 from forcha.utils.optimizers import Optimizers
 from collections import OrderedDict
+from forcha.utils.csv_handlers import save_coalitions
 import copy
 import os
 import csv
@@ -110,11 +110,6 @@ class Evaluation_Manager():
             self.compiled_flags.append('EXLSAA')
         else:
             self.flag_exlsaa_evaluator = False
-        if settings.get("ADAPTIVE_LSAA"):
-            self.flag_adlsaa_evaluator = True
-            self.compiled_flags.append("ADLSAA")
-        else:
-            self.flag_adlsaa_evaluator = False
         
         # Sets up a flag for each available method of score preservation
         # Flag: Preservation of partial results (for In-Sample Methods)
@@ -159,14 +154,6 @@ class Evaluation_Manager():
                 raise #TODO: Custom error
             except KeyError as k:
                 raise #TODO: Lacking configuration error
-        if self.flag_adlsaa_evaluator == True:
-            try:
-                self.adlsaa_evaluator = ADLSAA(nodes=nodes, iterations=iterations)
-                self.search_length = settings['line_search_length']
-            except NameError as e:
-                raise #TODO: Custom error
-            except KeyError as k:
-                raise #TODO: Lacking configuration error
 
         # Sets up the scheduler
         if settings.get("scheduler"):
@@ -191,6 +178,29 @@ class Evaluation_Manager():
         else:
             self.multip = True
             self.number_of_workers = settings['number_of_workers']
+    
+    
+    def set_leading_method(self,
+                           name: str):
+        """Sets the leading method of evaluation.
+        This method will be returned in subseqeunt
+        'self.get_last_results' calls. 
+        
+        Parameters
+        ----------
+        name (str): name of the method that should be set to main.
+        Returns
+        -------
+        None
+        """
+        if name == "LOO":
+            self.default_method = self.or_evaluator
+        elif name == "LSAA":
+            self.default_method = self.lsaa_evaluator
+        elif name == "EXLSAA":
+            self.default_method = self.exlsaa_evaluator
+        else:
+            raise NameError # TODO: Add custom error.
     
     
     def preserve_previous_model(self,
@@ -228,6 +238,7 @@ class Evaluation_Manager():
        """
         self.updated_c_model = copy.deepcopy(updated_model)
     
+    
     def preserve_previous_optimizer(self,
                                     previous_optimizer: Optimizers):
         """Preserves the Optimizer from the previous round by copying 
@@ -244,6 +255,21 @@ class Evaluation_Manager():
         None
         """
         self.previous_optimizer = copy.deepcopy(previous_optimizer)
+    
+    
+    def get_last_results(self,
+                         iteration: int) -> tuple[int, dict]:
+        """Returns the results of the last evaluation 
+        round
+
+        Parameters
+        iteration (int): curret iteration
+        ----------
+        Returns
+        tuple[int, dict]: tuple containing a last round id and a dict mapping nodes' id to the result.
+        None
+        """
+        return self.default_method.return_last_value(iteration = iteration)
 
     
     def track_results(self,
@@ -286,52 +312,43 @@ class Evaluation_Manager():
                                             previous_model= self.previous_c_model)
                 # Preserving debug values (if enabled)
                 if self.full_debug:
-                    if iteration == 0:
-                        with open(os.path.join(self.full_debug_path, 'col_values_debug_loo.csv'), 'a+', newline='') as csv_file:
-                            field_names = ['coalition', 'value', 'iteration']
-                            csv_writer = csv.writer(csv_file)
-                            csv_writer.writerow(field_names)
-                            for col, value in debug_values.items():
-                                csv_writer.writerow([col, value, iteration])
+                    if iteration  == 0:
+                        save_coalitions(values=debug_values,
+                                        path=self.full_debug_path,
+                                        name='col_values_psi_debug.csv',
+                                        iteration=iteration,
+                                        mode=0)
                     else:
-                        with open(os.path.join(self.full_debug_path, 'col_values_debug_loo.csv'), 'a+', newline='') as csv_file:
-                            csv_writer = csv.writer(csv_file)
-                            for col, value in debug_values.items():
-                                csv_writer.writerow([col, value, iteration])
+                        save_coalitions(values=debug_values,
+                                        path=self.full_debug_path,
+                                        name='col_values_psi_debug.csv',
+                                        iteration=iteration,
+                                        mode=1)
 
         # Shapley-InSample Method
         if self.flag_samplesh_evaluator:
             if iteration in self.scheduler['in_sample_shap']: # Checks scheduler
-                if self.multip:
-                    debug_values = self.samplesh_evaluator.update_shap_multip(gradients = gradients,
-                                                               nodes_in_sample = nodes_in_sample,
-                                                               iteration = iteration,
-                                                               optimizer = self.previous_optimizer,
-                                                               previous_model = self.previous_c_model,
-                                                               return_coalitions = self.full_debug,
-                                                               number_of_workers = self.number_of_workers)
-                else:
-                    debug_values = self.samplesh_evaluator.update_shap(gradients = gradients,
-                                                        nodes_in_sample = nodes_in_sample,
-                                                        iteration = iteration,
-                                                        optimizer = self.previous_optimizer,
-                                                        previous_model = self.previous_c_model,
-                                                        return_coalitions = self.full_debug)
+                debug_values = self.samplesh_evaluator.update_shap(gradients = gradients,
+                                                    nodes_in_sample = nodes_in_sample,
+                                                    iteration = iteration,
+                                                    optimizer = self.previous_optimizer,
+                                                    previous_model = self.previous_c_model,
+                                                    return_coalitions = self.full_debug)
 
                 # Preserving debug values (if enabled)
                 if self.full_debug:
-                    if iteration == 0:
-                        with open(os.path.join(self.full_debug_path, 'col_values_debug.csv'), 'a+', newline='') as csv_file:
-                            field_names = ['coalition', 'value', 'iteration']
-                            csv_writer = csv.writer(csv_file)
-                            csv_writer.writerow(field_names)
-                            for col, value in debug_values.items():
-                                csv_writer.writerow([col, value, iteration])
+                    if iteration  == 0:
+                        save_coalitions(values=debug_values,
+                                        path=self.full_debug_path,
+                                        name='col_values_shapley_debug.csv',
+                                        iteration=iteration,
+                                        mode=0)
                     else:
-                        with open(os.path.join(self.full_debug_path, 'col_values_debug.csv'), 'a+', newline='') as csv_file:
-                            csv_writer = csv.writer(csv_file)
-                            for col, value in debug_values.items():
-                                csv_writer.writerow([col, value, iteration])
+                        save_coalitions(values=debug_values,
+                                        path=self.full_debug_path,
+                                        name='col_values_shapley_debug.csv',
+                                        iteration=iteration,
+                                        mode=1)
     
         #LSAA Method
         if self.flag_lsaa_evaluator:
@@ -346,18 +363,18 @@ class Evaluation_Manager():
             
                             # Preserving debug values (if enabled)
                 if self.full_debug:
-                    if iteration == 0:
-                        with open(os.path.join(self.full_debug_path, 'col_values_debug_lsaa.csv'), 'a+', newline='') as csv_file:
-                            field_names = ['coalition', 'value', 'iteration']
-                            csv_writer = csv.writer(csv_file)
-                            csv_writer.writerow(field_names)
-                            for col, value in debug_values.items():
-                                csv_writer.writerow([col, value, iteration])
+                    if iteration  == 0:
+                        save_coalitions(values=debug_values,
+                                        path=self.full_debug_path,
+                                        name='col_values_lsaa_debug.csv',
+                                        iteration=iteration,
+                                        mode=0)
                     else:
-                        with open(os.path.join(self.full_debug_path, 'col_values_debug_lsaa.csv'), 'a+', newline='') as csv_file:
-                            csv_writer = csv.writer(csv_file)
-                            for col, value in debug_values.items():
-                                csv_writer.writerow([col, value, iteration])
+                        save_coalitions(values=debug_values,
+                                        path=self.full_debug_path,
+                                        name='col_values_lsaa_debug.csv',
+                                        iteration=iteration,
+                                        mode=1)
 
         #EXLSAA Method
         if self.flag_exlsaa_evaluator:
@@ -367,48 +384,22 @@ class Evaluation_Manager():
                                                                  iteration = iteration,
                                                                  search_length = self.search_length,
                                                                  optimizer = self.previous_optimizer,
-                                                                 final_model = self.updated_c_model,
                                                                  previous_model = self.previous_c_model)
             
         # Preserving debug values (if enabled)
                 if self.full_debug:
-                    if iteration == 0:
-                        with open(os.path.join(self.full_debug_path, 'col_values_debug_exlsaa.csv'), 'a+', newline='') as csv_file:
-                            field_names = ['coalition', 'value', 'iteration']
-                            csv_writer = csv.writer(csv_file)
-                            csv_writer.writerow(field_names)
-                            for col, value in debug_values.items():
-                                csv_writer.writerow([col, value, iteration])
+                    if iteration  == 0:
+                        save_coalitions(values=debug_values,
+                                        path=self.full_debug_path,
+                                        name='col_values_exlsaa_debug.csv',
+                                        iteration=iteration,
+                                        mode=0)
                     else:
-                        with open(os.path.join(self.full_debug_path, 'col_values_debug_exlsaa.csv'), 'a+', newline='') as csv_file:
-                            csv_writer = csv.writer(csv_file)
-                            for col, value in debug_values.items():
-                                csv_writer.writerow([col, value, iteration])
-        #ADLSAA Method
-        if self.flag_adlsaa_evaluator:
-            if iteration in self.scheduler['ADLSAA']: # Checks scheduler
-                debug_values = self.adlsaa_evaluator.update_lsaa(gradients = gradients,
-                                                                 nodes_in_sample = nodes_in_sample,
-                                                                 iteration = iteration,
-                                                                 search_length = self.search_length,
-                                                                 optimizer = self.previous_optimizer,
-                                                                 final_model = self.updated_c_model,
-                                                                 previous_model = self.previous_c_model)
-            
-        # Preserving debug values (if enabled)
-                if self.full_debug:
-                    if iteration == 0:
-                        with open(os.path.join(self.full_debug_path, 'col_values_debug_adlsaa.csv'), 'a+', newline='') as csv_file:
-                            field_names = ['coalition', 'value', 'iteration']
-                            csv_writer = csv.writer(csv_file)
-                            csv_writer.writerow(field_names)
-                            for col, value in debug_values.items():
-                                csv_writer.writerow([col, value, iteration])
-                    else:
-                        with open(os.path.join(self.full_debug_path, 'col_values_debug_adlsaa.csv'), 'a+', newline='') as csv_file:
-                            csv_writer = csv.writer(csv_file)
-                            for col, value in debug_values.items():
-                                csv_writer.writerow([col, value, iteration])
+                        save_coalitions(values=debug_values,
+                                        path=self.full_debug_path,
+                                        name='col_values_exlsaa_debug.csv',
+                                        iteration=iteration,
+                                        mode=1)
 
 
     def finalize_tracking(self,
@@ -438,28 +429,23 @@ class Evaluation_Manager():
         
         if self.flag_sample_evaluator:
             partial_psi, psi = self.sample_evaluator.calculate_final_psi()
-            results['partial']['partial_psi'] = partial_psi
-            results['full']['psi'] = psi
+            results['partial']['partial_psi_debug'] = partial_psi
+            results['full']['psi_debug'] = psi
         
         if self.flag_samplesh_evaluator:
             partial_shap, shap = self.samplesh_evaluator.calculate_final_shap()
-            results['partial']['partial_shap'] = partial_shap
-            results['full']['shap'] = shap
+            results['partial']['partial_shap_debug'] = partial_shap
+            results['full']['shap_debug'] = shap
         
-        if self.flag_lsaa_evaluator:
+        if self.flag_flag_lsaa_evaluator:
             partial_lsaa, lsaa = self.lsaa_evaluator.calculate_final_lsaa()
-            results['partial']['partial_lsaa'] = partial_lsaa
-            results['full']['lsaa'] = lsaa
+            results['partial']['partial_lsaa_debug'] = partial_lsaa
+            results['full']['lsaa_debug'] = lsaa
         
-        if self.flag_exlsaa_evaluator:
+        if self.flag_flag_exlsaa_evaluator:
             partial_exlsaa, exlsaa = self.exlsaa_evaluator.calculate_final_lsaa()
-            results['partial']['partial_exlsaa'] = partial_exlsaa
-            results['full']['exlsaa'] = exlsaa
-        
-        if self.flag_adlsaa_evaluator:
-            partial_adlsaa, adlsaa = self.adlsaa_evaluator.calculate_final_lsaa()
-            results['partial']['partial_adlsaa'] = partial_adlsaa
-            results['full']['adlsaa'] = adlsaa
+            results['partial']['partial_exlsaa_debug'] = partial_exlsaa
+            results['full']['exlsaa_debug'] = exlsaa
         
         if self.preserve_partial_results == True:
             for metric, values in results['partial'].items():

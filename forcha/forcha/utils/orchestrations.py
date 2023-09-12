@@ -1,9 +1,10 @@
 from typing import Any, Tuple, List, Dict, AnyStr, Union
 from forcha.components.nodes.federated_node import FederatedNode
-from forcha.models.pytorch.federated_model import FederatedModel
+import numpy as np
 import datasets
 from logging import Logger
 import random
+
 
 def prepare_nodes(node: FederatedNode, 
                  model: Any,
@@ -69,32 +70,50 @@ def check_health(node: FederatedNode,
 
 def sample_nodes(nodes: list[FederatedNode], 
                  sample_size: int,
-                 orchestrator_logger: Logger,
+                 generator: np.random.Generator,
                  return_aux: bool = False) -> list[FederatedNode]:
     """Sample the nodes given the provided sample size. If sample_size is bigger
     or equal to the number of av. nodes, the sampler will return the original list.
      -------------
     Args:
-        nodes (list[FederatedNode]): original list of nodes to be sampled from
+        nodes (list[FederatedNode]): original list of nodes to be sampled from,
         sample_size (int): size of the sample.
+        generator (np.random.Generator): a numpy generator initialized on the server side.
         return_aux (bool = auxiliary): if set to True, will return a list containing id's of the sampled nodes.
     -------------
     Returns:
         list[FederatedNode]: List of sampled nodes."""
-    if len(nodes) <= sample_size:
-        orchestrator_logger.warning("Sample size should be smaller than the size of the population, returning the original list")
-        if return_aux == True:
-            sampled_ids = [node.node_id for node in nodes]
-            return (nodes, sampled_ids)
-        else:
-            return nodes
+    sample = generator.choice(nodes, size=sample_size, replace=False)
+    if return_aux == True:
+        sampled_ids = [node.node_id for node in sample]
+        return (sample, sampled_ids)
     else:
-        sample = random.sample(nodes, sample_size)
-        if return_aux == True:
-            sampled_ids = [node.node_id for node in sample]
-            return (sample, sampled_ids)
-        else:
-            return sample
+        return sample
+
+
+def sample_weighted_nodes(nodes: list[FederatedNode], 
+                          sample_size: int,
+                          sampling_array: np.array,
+                          generator: np.random.Generator,
+                          return_aux: bool = False) -> list[FederatedNode]:
+    """Sample the nodes given the provided sample size. It requires passing a sampling array
+    containing list of weights associated with each node.
+     -------------
+    Args:
+        nodes (list[FederatedNode]): original list of nodes to be sampled from,
+        sample_size (int): size of the sample.
+        sampling_array (np.array[float]): numpy array of weights associated with each agent.
+        generator (np.random.Generator): a numpy generator initialized on the server side.
+        return_aux (bool = auxiliary): if set to True, will return a list containing id's of the sampled nodes.
+    -------------
+    Returns:
+        list[FederatedNode]: List of sampled nodes."""
+    sample = generator.choice(nodes, size=sample_size, p = sampling_array, replace=False)
+    if return_aux == True:
+        sampled_ids = [node.node_id for node in sample]
+        return (sample, sampled_ids)
+    else:
+        return sample
 
 
 def train_nodes(node: FederatedNode, 

@@ -1,10 +1,10 @@
 """This example envisages traning a common Convolutional Neural Network on a number of distributed datasets using
-classical FedOpt algorithm. Local datasets are uniformly distributed, but some of them are transformed (noised) 
-according to predefined schema. During the training, three contribution metrics are defined: LOO, LSAA and EXLSAA."""
+classical FedAdagard algorithm. Local datasets are uniformly distributed, but some of them are transformed (noised) 
+according to predefined schema. During the training, no contribution are calculated."""
 
 import pickle
 import os
-from forcha.components.orchestrator.evaluator_orchestrator import Evaluator_Orchestrator
+from forcha.components.orchestrator.fedopt_orchestrator import Fedopt_Orchestrator
 from forcha.components.settings.init_settings import init_settings
 from forcha.models.pytorch.mnist import MNIST_CNN
 
@@ -16,8 +16,8 @@ def simulation():
          "orchestrator": {
             "iterations": 5,
             "number_of_nodes": 3,
-            "sample_size": 3,
-            'enable_archiver': True,
+            "sample_size": 2,
+            'enable_archiver': False,
             "archiver":{
                 "root_path": os.getcwd(),
                 "orchestrator": True,
@@ -39,12 +39,12 @@ def simulation():
             "IN_SAMPLE_SHAP": False,
             "LSAA": True,
             "EXTENDED_LSAA": True,
-            "ADAPTIVE_LSAA": False,
+            "ADAPTIVE_LSAA": True,
             "line_search_length": 1,
             "preserve_evaluation": {
                 "preserve_partial_results": True,
                 "preserve_final_results": True},
-            "full_debug": True,
+            "full_debug": False,
             "number_of_workers": 50}},
         "nodes":{
         "local_epochs": 1,
@@ -62,7 +62,7 @@ def simulation():
          initialization_method='dict',
          dict_settings = config,
          allow_default=True)
-    with open(r'C:\Users\macie\OneDrive\Dokumenty\GitHub\Forcha\forcha\tests\examples\mnist_lsaa\MNIST_3_dataset', 'rb') as path:
+    with open(r'C:\Users\macie\OneDrive\Dokumenty\GitHub\Forcha\forcha\tests\examples\mnist_fedopt\MNIST_3_dataset', 'rb') as path:
         data = pickle.load(path)
     # DATA: Selecting data for the orchestrator
     orchestrator_data = data[0]
@@ -70,7 +70,7 @@ def simulation():
     nodes_data = data[1]
     model = MNIST_CNN()
         
-    orchestrator = Evaluator_Orchestrator(settings, full_debug = True)
+    orchestrator = Fedopt_Orchestrator(settings)
     
     orchestrator.prepare_orchestrator(
          model=model, 
