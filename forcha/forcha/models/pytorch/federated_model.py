@@ -44,7 +44,12 @@ class FederatedModel:
         Returns:
             None
         """
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # FORCE CPU IF ENABLED
+        force_cpu = settings.get('FORCE_CPU')
+        if force_cpu == True:
+            self.device = torch.device('cpu')
+        else:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.cpu = torch.device("cpu")
         self.initial_model = None
         self.optimizer: optim.Optimizer = None
@@ -330,15 +335,12 @@ class FederatedModel:
             data = dic['image']
             target = dic['label']
 
-            self.optimizer.zero_grad()
+            self.net.zero_grad() # Zero grading the network
 
             if isinstance(data, list):
                 data = data[0]
             
-            # Zero the gradients
-            self.optimizer.zero_grad()
-            self.net.zero_grad()
-            
+                        
             # Placing the data on the device
             data, target = data.to(self.device), target.to(self.device)
             # forward pass, backward pass and optimization
@@ -350,20 +352,15 @@ class FederatedModel:
             running_loss += loss.item()
             total_correct += correct
             total += target.size(0)
-
-            # self.optimizer.zero_grad()
-            # self.net.zero_grad()
             
             loss.backward()
+            
             # Optional: gradient clipping
             if self.settings.get('gradient_clip'):
                 torch.nn.utils.clip_grad_norm_(self.net.parameters(), self.settings['gradient_clip'])
 
             self.optimizer.step()
-            
-            # self.optimizer.zero_grad()
-            # self.net.zero_grad()
-        
+                    
             # Emptying the cuda_cache
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
