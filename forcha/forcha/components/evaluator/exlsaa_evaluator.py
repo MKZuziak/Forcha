@@ -105,6 +105,8 @@ class EXLSAA(LSAA):
                     recorded_values[tuple(appended_gradients.keys())] = appended_model_score
                 
                 self.partial_lsaa[iteration][node_id] = lsaa_score / search_length
+                
+                print(f"Evaluated EXLSAA of client {node}") #TODO
         
             if return_coalitions == True:
                     return recorded_values

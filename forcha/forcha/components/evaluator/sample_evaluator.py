@@ -146,6 +146,8 @@ class Sample_Evaluator():
             
             recorded_values[tuple(marginal_gradients.keys())] = marginal_model_score
             
+            print(f"Evaluated LOO of client {node}") #TODO
+            
         if return_coalitions == True:
             return recorded_values
 
