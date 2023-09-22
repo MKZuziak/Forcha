@@ -17,7 +17,7 @@ class Parallel_Manager(Evaluation_Manager):
                  nodes: list = None, 
                  iterations: int = None) -> None:
         super().__init__(settings, model, nodes, iterations)
-                # Sets up a flag for each available method of evaluation.
+        # Sets up a flag for each available method of evaluation.
         # Flag: Shapley-OneRound Method
         # Flag: LOO-InSample Method
         if settings.get("IN_SAMPLE_LOO"):
@@ -120,8 +120,6 @@ class Parallel_Manager(Evaluation_Manager):
                                         name='col_values_lsaa.csv',
                                         iteration=iteration,
                                         mode=1)
-        
-        
         #EXLSAA Method
         if self.flag_exlsaa_evaluator:
             if iteration in self.scheduler['EXLSAA']: # Checks scheduler
@@ -144,8 +142,6 @@ class Parallel_Manager(Evaluation_Manager):
                                         name='col_values_exlsaa.csv',
                                         iteration=iteration,
                                         mode=1)
-        
-        
         #PSI Method
         if self.flag_sample_evaluator:
             if iteration in self.scheduler['in_sample_loo']: # Checks scheduler

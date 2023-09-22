@@ -1,0 +1,6 @@
+- Mode: Fed_Opt
+- Clients: 3
+- Round: 150
+- Detects: general correctness, memory leaks.
+
+Results [22.09.2023, v. 0.1.4.4]: All seems correct, model training is more or less stable, gpu memory does not leak.

@@ -74,7 +74,7 @@ class Evaluator_Orchestrator(Orchestrator):
         # Initializing all the attributes using an instance of the Settings object.
         iterations = self.settings.iterations # Int, number of iterations
         nodes_number = self.settings.number_of_nodes # Int, number of nodes
-        local_warm_start = self.settings.local_warm_start
+        local_warm_start = self.settings.local_warm_start #To remove in future
         nodes = [node for node in range(nodes_number)] # List of ints, list of nodes ids
         sample_size = self.settings.sample_size # Int, size of the sample
         
@@ -98,11 +98,11 @@ class Evaluator_Orchestrator(Orchestrator):
                                                 nodes = nodes,
                                                 iterations = iterations)
         if self.full_debug:
+            self.orchestrator_logger.critical("DEBUG MANAGER IS ENABLED. THIS WILL REDUCE PERFORMANCE VISIBLY.")
             debug_manager = Evaluation_Manager(settings = self.settings.evaluator_settings,
                                                model = self.central_model,
                                                nodes = nodes,
                                                iterations = iterations)
-        
         # Creating (empty) federated nodes.
         nodes_green = create_nodes(nodes, 
                                    self.settings.nodes_settings)
@@ -113,11 +113,9 @@ class Evaluator_Orchestrator(Orchestrator):
         nodes_green = self.nodes_initialization(nodes_list=nodes_green,
                                                 model_list=model_list,
                                                 data_list=nodes_data)
-
         for iteration in range(iterations):
             self.orchestrator_logger.info(f"Iteration {iteration}")
             gradients = {}
-            
             # Evaluation step: preserving the last version of the model and optimizer
             evaluation_manager.preserve_previous_model(previous_model = self.central_model)
             evaluation_manager.preserve_previous_optimizer(previous_optimizer = Optim)
