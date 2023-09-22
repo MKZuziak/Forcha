@@ -1,5 +1,5 @@
 - Mode: Fed_Opt
-- Clients: 3
+- Clients: 5
 - Round: 150
 - Detects: general correctness, memory leaks.
 

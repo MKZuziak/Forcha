@@ -6,7 +6,7 @@ import pickle
 import os
 from forcha.components.orchestrator.fedopt_orchestrator import Fedopt_Orchestrator
 from forcha.components.settings.init_settings import init_settings
-from forcha.models.pytorch.mnist import MNIST_CNN
+from forcha.models.pytorch.fmnist import create_FashionMnistNet
 
 
 
@@ -14,9 +14,9 @@ def simulation():
     cwd = os.getcwd()
     config = {
          "orchestrator": {
-            "iterations": 140,
-            "number_of_nodes": 3,
-            "sample_size": 3,
+            "iterations": 20,
+            "number_of_nodes": 12,
+            "sample_size": 12,
             'enable_archiver': True,
             "archiver":{
                 "root_path": os.getcwd(),
@@ -31,7 +31,7 @@ def simulation():
                 },
             "optimizer": {
                 "name": "Simple",
-                "learning_rate": 0.1},
+                "learning_rate": 0.5},
             "evaluator" : {
             "LOO_OR": False,
             "Shapley_OR": False,
@@ -47,7 +47,7 @@ def simulation():
             "full_debug": True,
             "number_of_workers": 50}},
         "nodes":{
-        "local_epochs": 1,
+        "local_epochs": 3,
         "model_settings": {
             "optimizer": "Adam",
             "betas": (0.9, 0.8),
@@ -63,15 +63,17 @@ def simulation():
          initialization_method='dict',
          dict_settings = config,
          allow_default=True)
-    with open(r'/home/mzuziak/documents/Forcha/forcha/tests/test_runs/fed_opt/test/dataset/MNIST_5_dataset', 'rb') as path:
+    with open(r'/home/mzuziak/documents/Forcha/forcha/tests/test_runs/fed_opt_batched_heavy/test/dataset/FMNIST_12_dataset', 'rb') as path:
         data = pickle.load(path)
     # DATA: Selecting data for the orchestrator
     orchestrator_data = data[0]
     # DATA: Selecting data for nodes
     nodes_data = data[1]
-    model = MNIST_CNN()
-        
-    orchestrator = Fedopt_Orchestrator(settings, full_debug = True)
+    model = create_FashionMnistNet()
+    orchestrator = Fedopt_Orchestrator(settings, 
+                                       batch_job = True,
+                                       batch = 6,
+                                       full_debug = True)
     
     orchestrator.prepare_orchestrator(
          model=model, 

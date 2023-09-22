@@ -337,7 +337,7 @@ class FederatedModel:
             outputs = self.net(inputs)
             loss = criterion(outputs, targets)
             loss.backward()
-            optimizer.step()
+            self.optimizer.step()
             
             train_loss += loss.item()
             _, predicted = outputs.max(1)
@@ -351,7 +351,8 @@ class FederatedModel:
         loss = train_loss / len(self.trainloader)
         accuracy = correct / total
         model_logger.info(f"Training on {self.node_name} results: loss: {loss}, accuracy: {accuracy}")
-        return loss, accuracy
+        return (loss, 
+                accuracy)
     
 
     def evaluate_model(self) -> tuple[float, float, float, float, float, list]:
@@ -366,70 +367,69 @@ class FederatedModel:
         # Try: to place net on device directly during the evaluation stage.
         self.net.to(self.device)
         self.net.eval()
+        criterion = nn.CrossEntropyLoss()
+        test_loss = 0
+        correct = 0
+        total = 0
+        y_pred = []
+        y_true = []
+        losses = []
         
         with torch.no_grad():
-            criterion = nn.CrossEntropyLoss()
-            test_loss = 0
-            correct = 0
-            total = 0
-            y_pred = []
-            y_true = []
-            losses = []
-            with torch.no_grad():
-                for _, dic in enumerate(self.testloader):
-                    inputs = dic['image']
-                    targets = dic['label']
-                    inputs, targets = inputs.to(self.device), targets.to(self.device)
-                    output = self.net(inputs)
-                    
-                    total += target.size(0)
-                    test_loss = criterion(output, target).item()
-                    losses.append(test_loss)
-                    pred = output.argmax(dim=1, keepdim=True)
-                    correct += pred.eq(target.view_as(pred)).sum().item()
-                    y_pred.append(pred)
-                    y_true.append(target)
+            for _, dic in enumerate(self.testloader):
+                inputs = dic['image']
+                targets = dic['label']
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
+                output = self.net(inputs)
+                
+                total += targets.size(0)
+                test_loss = criterion(output, targets).item()
+                losses.append(test_loss)
+                pred = output.argmax(dim=1, keepdim=True)
+                correct += pred.eq(targets.view_as(pred)).sum().item()
+                y_pred.append(pred)
+                y_true.append(targets)
 
-            test_loss = np.mean(losses)
-            accuracy = correct / total
+        test_loss = np.mean(losses)
+        accuracy = correct / total
 
-            y_true = [item.item() for sublist in y_true for item in sublist]
-            y_pred = [item.item() for sublist in y_pred for item in sublist]
+        y_true = [item.item() for sublist in y_true for item in sublist]
+        y_pred = [item.item() for sublist in y_pred for item in sublist]
 
-            f1score = f1_score(y_true, y_pred, average="macro")
-            precision = precision_score(y_true, y_pred, average="macro")
-            recall = recall_score(y_true, y_pred, average="macro")
+        f1score = f1_score(y_true, y_pred, average="macro")
+        precision = precision_score(y_true, y_pred, average="macro")
+        recall = recall_score(y_true, y_pred, average="macro")
 
-            cm = confusion_matrix(y_true, y_pred)
-            cm = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
-            accuracy_per_class = cm.diagonal()
+        cm = confusion_matrix(y_true, y_pred)
+        cm = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
+        accuracy_per_class = cm.diagonal()
 
-            true_positives = np.diag(cm)
-            num_classes = len(list(set(y_true)))
+        true_positives = np.diag(cm)
+        num_classes = len(list(set(y_true)))
 
-            false_positives = []
-            for i in range(num_classes):
-                false_positives.append(sum(cm[:,i]) - cm[i,i])
+        false_positives = []
+        for i in range(num_classes):
+            false_positives.append(sum(cm[:,i]) - cm[i,i])
 
-            false_negatives = []
-            for i in range(num_classes):
-                false_negatives.append(sum(cm[i,:]) - cm[i,i])
+        false_negatives = []
+        for i in range(num_classes):
+            false_negatives.append(sum(cm[i,:]) - cm[i,i])
 
-            true_negatives = []
-            for i in range(num_classes):
-                temp = np.delete(cm, i, 0)   # delete ith row
-                temp = np.delete(temp, i, 1)  # delete ith column
-                true_negatives.append(sum(sum(temp)))
+        true_negatives = []
+        for i in range(num_classes):
+            temp = np.delete(cm, i, 0)   # delete ith row
+            temp = np.delete(temp, i, 1)  # delete ith column
+            true_negatives.append(sum(sum(temp)))
 
-            denominator = [sum(x) for x in zip(false_positives, true_negatives)]
-            false_positive_rate = [num/den for num, den in zip(false_positives, denominator)]
+        denominator = [sum(x) for x in zip(false_positives, true_negatives)]
+        false_positive_rate = [num/den for num, den in zip(false_positives, denominator)]
 
-            denominator = [sum(x) for x in zip(true_positives, false_negatives)]
-            true_positive_rate = [num/den for num, den in zip(true_positives, denominator)]
+        denominator = [sum(x) for x in zip(true_positives, false_negatives)]
+        true_positive_rate = [num/den for num, den in zip(true_positives, denominator)]
 
-            # # Emptying the cuda_cache
-            # if torch.cuda.is_available():
-            #     torch.cuda.empty_cache()
+        # # Emptying the cuda_cache
+        # if torch.cuda.is_available():
+        #     torch.cuda.empty_cache()
 
         return (
                 test_loss,
@@ -456,7 +456,6 @@ class FederatedModel:
         # Try: to place net on device directly during the evaluation stage.
         self.net.to(self.device)
         criterion = nn.CrossEntropyLoss()
-        net.eval()
         test_loss = 0
         correct = 0
         total = 0

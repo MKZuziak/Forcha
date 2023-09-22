@@ -5,16 +5,16 @@ import os
 def generate():
     # Configuration for the generation script.
     data_config = {
-    "dataset_name" : "mnist",
+    "dataset_name" : "fmnist",
     "split_type" : "homogeneous",
-    "shards": 5,
+    "shards": 12,
     "local_test_size": 0.3,
     "transformations": {0: {"transformation_type": "noise", "noise_multiplyer": 0.2}},
     "imbalanced_clients": {},
     "save_dataset": True,
     "save_transformations": True,
     "save_blueprint": True,
-    "agents": 5,
+    "agents": 12,
     "shuffle": True,
     "save_path": os.getcwd()}
     # Execution
