@@ -6,7 +6,7 @@ import pickle
 import os
 from forcha.components.orchestrator.fedopt_orchestrator import Fedopt_Orchestrator
 from forcha.components.settings.init_settings import init_settings
-from forcha.models.pytorch.fmnist import create_FashionMnistNet
+from forcha.models.pytorch.mnist import MNIST_Expanded_CNN
 
 
 
@@ -15,8 +15,8 @@ def simulation():
     config = {
          "orchestrator": {
             "iterations": 20,
-            "number_of_nodes": 6,
-            "sample_size": 6,
+            "number_of_nodes": 3,
+            "sample_size": 3,
             'enable_archiver': True,
             "archiver":{
                 "root_path": os.getcwd(),
@@ -69,7 +69,7 @@ def simulation():
     orchestrator_data = data[0]
     # DATA: Selecting data for nodes
     nodes_data = data[1]
-    model = create_FashionMnistNet()
+    model = MNIST_Expanded_CNN()
     orchestrator = Fedopt_Orchestrator(settings, full_debug = True)
     
     orchestrator.prepare_orchestrator(

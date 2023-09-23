@@ -139,3 +139,8 @@ Iteration,Memory Allocated,Memory Cached
 137,0.0275,0.0684
 138,0.0275,0.0684
 139,0.0275,0.0684
+Iteration,Memory Allocated,Memory Cached
+0,0.0275,0.0684
+1,0.0275,0.0684
+Iteration,Memory Allocated,Memory Cached
+0,0.0275,0.0684

@@ -1,8 +1,12 @@
 - Mode: Fed_Opt
 - Task: FMNIST learning
-- Model: Resnet-34.
-- Clients: 8
-- Round: 150
+- Model: Expanded CNN.
+- Clients: 3
+- Sample: 3
+- Round: 20
 - Detects: general correctness, memory leaks.
+- Machine: eltractor.isti.cnr.it
 
-Results [22.09.2023, v. 0.1.4.4]: All seems correct, model training is more or less stable, gpu memory does not leak.
+Results [23.09.2023, v. 0.1.4.4]: All seems correct, model training is more or less stable, gpu memory does not leak.
+Backlog [23.09.2023, v. 0.1.4.4]: Strange behaviour observed: training may hold and lock during multiprocessing 
+stage. So far, I lack explanation. Maybe it is due to th hardware limitations.

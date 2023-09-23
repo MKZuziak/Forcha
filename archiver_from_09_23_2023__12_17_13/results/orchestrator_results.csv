@@ -1,0 +1,2 @@
+epoch,node,loss,accuracy,fscore,precision,recall,test_accuracy_per_class,true_positive_rate,false_positive_rate
+0,orchestrator,2.3273061893463134,0.1,0.01818181818181818,0.01,0.1,[0. 0. 0. 0. 1. 0. 0. 0. 0. 0.],"[0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]","[0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]"
