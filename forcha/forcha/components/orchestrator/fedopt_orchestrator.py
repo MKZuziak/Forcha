@@ -113,7 +113,7 @@ class Fedopt_Orchestrator(Orchestrator):
                                          sample_size=sample_size,
                                          generator=self.generator) # SAMPLING FUNCTION -> CHANGE IF NEEDED
             if self.batch_job:
-                self.orchestrator_logger(f"Entering batched job, size of the batch {self.batch}")
+                self.orchestrator_logger.info(f"Entering batched job, size of the batch {self.batch}")
                 for batch in Helpers.chunker(sampled_nodes, size=self.batch):
                     with Pool(sample_size) as pool:
                         results = [pool.apply_async(train_nodes, (node, 'gradients')) for node in batch]
