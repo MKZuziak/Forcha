@@ -63,7 +63,7 @@ def simulation():
          initialization_method='dict',
          dict_settings = config,
          allow_default=True)
-    with open(r'/home/mzuziak/documents/Forcha/forcha/tests/test_runs/fed_opt/test/dataset/MNIST_5_dataset', 'rb') as path:
+    with open(r'/home/mzuziak/snap/snapd-desktop-integration/83/Documents/Forcha/forcha/tests/test_runs/fed_opt/test/dataset/MNIST_5_dataset', 'rb') as path:
         data = pickle.load(path)
     # DATA: Selecting data for the orchestrator
     orchestrator_data = data[0]
