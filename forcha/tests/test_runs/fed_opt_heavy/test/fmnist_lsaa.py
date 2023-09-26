@@ -14,9 +14,9 @@ def simulation():
     cwd = os.getcwd()
     config = {
          "orchestrator": {
-            "iterations": 20,
-            "number_of_nodes": 3,
-            "sample_size": 3,
+            "iterations": 50,
+            "number_of_nodes": 6,
+            "sample_size": 6,
             'enable_archiver': True,
             "archiver":{
                 "root_path": os.getcwd(),
@@ -63,7 +63,7 @@ def simulation():
          initialization_method='dict',
          dict_settings = config,
          allow_default=True)
-    with open(r'/home/mzuziak/documents/Forcha/forcha/tests/test_runs/fed_opt_heavy/test/dataset/FMNIST_6_dataset', 'rb') as path:
+    with open(r'/home/mzuziak/snap/snapd-desktop-integration/83/Documents/Forcha/forcha/tests/test_runs/fed_opt_heavy/test/dataset/FMNIST_6_dataset', 'rb') as path:
         data = pickle.load(path)
     # DATA: Selecting data for the orchestrator
     orchestrator_data = data[0]
