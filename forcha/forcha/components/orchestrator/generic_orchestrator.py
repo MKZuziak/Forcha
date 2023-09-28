@@ -58,7 +58,10 @@ class Orchestrator():
             self.batch = kwargs["batch"]
         else:
             self.batch_job = False
-        
+        if kwargs.get("parallelization"):
+            self.parallelization = True
+        else:
+            self.parallelization = False
         self.orchestrator_logger = Loggers.orchestrator_logger()
     
     

@@ -465,7 +465,7 @@ class FederatedModel:
                 inputs = dic['image']
                 targets = dic['label']
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
-                outputs = net(inputs)
+                outputs = self.net(inputs)
                 loss = criterion(outputs, targets)
                 
                 test_loss += loss.item()

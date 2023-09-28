@@ -12,6 +12,13 @@ import copy
 import os
 import csv
 
+def compare_for_debug(dict1, dict2):
+    for (row1, row2) in zip(dict1.values(), dict2.values()):
+        if False in (row1 == row2):
+            return False
+        else:
+            return True
+
 
 class Evaluation_Manager():
     """Evaluation Manager encapsulates the whole process of assessing the marginal
@@ -218,7 +225,7 @@ class Evaluation_Manager():
         -------
         None
         """
-        self.previous_c_model = copy.deepcopy(previous_model)
+        self.previous_c_model = copy.deepcopy(previous_model.get_weights())
     
 
     def preserve_updated_model(self,
@@ -236,7 +243,7 @@ class Evaluation_Manager():
         -------
         None
        """
-        self.updated_c_model = copy.deepcopy(updated_model)
+        self.updated_c_model = copy.deepcopy(updated_model.get_weights())
     
     
     def preserve_previous_optimizer(self,
@@ -254,7 +261,7 @@ class Evaluation_Manager():
         -------
         None
         """
-        self.previous_optimizer = copy.deepcopy(previous_optimizer)
+        self.previous_optimizer = copy.deepcopy(previous_optimizer.get_weights())
     
     
     def get_last_results(self,
@@ -275,7 +282,9 @@ class Evaluation_Manager():
     def track_results(self,
                         gradients: OrderedDict,
                         nodes_in_sample: list,
-                        iteration: int):
+                        iteration: int,
+                        model_template: FederatedModel,
+                        optimizer_template):
         """Method used to track_results after each training round.
         Because the Orchestrator abstraction should be free of any
         unnecessary encumbrance, the Evaluation_Manager.track_results()
@@ -294,22 +303,25 @@ class Evaluation_Manager():
         -------
         None
         """
-        # Shapley-OneRound Method tracking
-        # LOO-OneRound Method tracking
-        if self.flag_shap_or:
-            self.or_evaluator.track_shapley(gradients=gradients)
-        elif self.flag_loo_or: # This is called ONLY when we don't calculate Shapley, but we calculate LOO
-            self.or_evaluator.track_loo(gradients=gradients)
+        # # Shapley-OneRound Method tracking
+        # # LOO-OneRound Method tracking
+        # if self.flag_shap_or:
+        #     self.or_evaluator.track_shapley(gradients=gradients)
+        # elif self.flag_loo_or: # This is called ONLY when we don't calculate Shapley, but we calculate LOO
+        #     self.or_evaluator.track_loo(gradients=gradients)
         
         # LOO-InSample Method
         if self.flag_sample_evaluator:
             if iteration in self.scheduler['in_sample_loo']: # Checks scheduler
-                debug_values = self.sample_evaluator.update_psi(gradients = gradients,
-                                            nodes_in_sample = nodes_in_sample,
-                                            iteration = iteration,
-                                            optimizer = self.previous_optimizer,
-                                            final_model = self.updated_c_model,
-                                            previous_model= self.previous_c_model)
+                debug_values = self.sample_evaluator.update_psi(
+                    model_template = model_template,
+                    optimizer_template = optimizer_template,
+                    gradients = gradients,
+                    nodes_in_sample = nodes_in_sample,
+                    iteration = iteration,
+                    optimizer = self.previous_optimizer,
+                    final_model = self.updated_c_model,
+                    previous_model= self.previous_c_model)
                 # Preserving debug values (if enabled)
                 if self.full_debug:
                     if iteration  == 0:
@@ -325,30 +337,30 @@ class Evaluation_Manager():
                                         iteration=iteration,
                                         mode=1)
 
-        # Shapley-InSample Method
-        if self.flag_samplesh_evaluator:
-            if iteration in self.scheduler['in_sample_shap']: # Checks scheduler
-                debug_values = self.samplesh_evaluator.update_shap(gradients = gradients,
-                                                    nodes_in_sample = nodes_in_sample,
-                                                    iteration = iteration,
-                                                    optimizer = self.previous_optimizer,
-                                                    previous_model = self.previous_c_model,
-                                                    return_coalitions = self.full_debug)
+        # # Shapley-InSample Method
+        # if self.flag_samplesh_evaluator:
+        #     if iteration in self.scheduler['in_sample_shap']: # Checks scheduler
+        #         debug_values = self.samplesh_evaluator.update_shap(gradients = gradients,
+        #                                             nodes_in_sample = nodes_in_sample,
+        #                                             iteration = iteration,
+        #                                             optimizer = self.previous_optimizer,
+        #                                             previous_model = self.previous_c_model,
+        #                                             return_coalitions = self.full_debug)
 
-                # Preserving debug values (if enabled)
-                if self.full_debug:
-                    if iteration  == 0:
-                        save_coalitions(values=debug_values,
-                                        path=self.full_debug_path,
-                                        name='col_values_shapley_debug.csv',
-                                        iteration=iteration,
-                                        mode=0)
-                    else:
-                        save_coalitions(values=debug_values,
-                                        path=self.full_debug_path,
-                                        name='col_values_shapley_debug.csv',
-                                        iteration=iteration,
-                                        mode=1)
+        #         # Preserving debug values (if enabled)
+        #         if self.full_debug:
+        #             if iteration  == 0:
+        #                 save_coalitions(values=debug_values,
+        #                                 path=self.full_debug_path,
+        #                                 name='col_values_shapley_debug.csv',
+        #                                 iteration=iteration,
+        #                                 mode=0)
+        #             else:
+        #                 save_coalitions(values=debug_values,
+        #                                 path=self.full_debug_path,
+        #                                 name='col_values_shapley_debug.csv',
+        #                                 iteration=iteration,
+        #                                 mode=1)
     
         #LSAA Method
         if self.flag_lsaa_evaluator:

@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from torch import zeros
 import torch
-
+import copy
 
 class Optimizers():
     def __init__(self,
@@ -27,8 +27,24 @@ class Optimizers():
             self.tau = torch.tensor(settings['tau'])
         else:
             "Wrong optimizer's name was provided. Unable to retrieve parameters!"
-
-
+    
+    
+    def get_weights(self):
+        previous_delta = self.previous_delta
+        previous_momentum = self.previous_momentum
+        learning_rate = self.learning_rate
+        return (previous_delta, previous_momentum, learning_rate)
+    
+    
+    def set_weights(self,
+                    previous_delta,
+                    previous_momentum,
+                    learning_rate):
+        self.previous_delta = previous_delta
+        self.previous_momentum = previous_momentum
+        self.learning_rate = learning_rate
+        
+        
     def fed_optimize(self,
                      weights: OrderedDict,
                      delta: OrderedDict) -> OrderedDict:

@@ -106,7 +106,9 @@ class EXLSAA(LSAA):
                 
                 self.partial_lsaa[iteration][node_id] = lsaa_score / search_length
                 
-                print(f"Evaluated EXLSAA of client {node}") #TODO
+                print(f"Evaluated EXLSAA of client {node_id}") #TODO
+                del appended_model, appended_gradients, appended_optimizer, appended_weights, appended_grad_avg
+                del marginal_model, marginal_gradients, marginal_optim, marginal_weights, marginal_grad_avg
         
             if return_coalitions == True:
                     return recorded_values

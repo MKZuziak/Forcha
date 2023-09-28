@@ -9,6 +9,13 @@ from collections import OrderedDict
 from _collections_abc import Generator
 from forcha.utils.optimizers import Optimizers
 
+def compare_for_debug(dict1, dict2):
+    for (row1, row2) in zip(dict1.values(), dict2.values()):
+        if False in (row1 == row2):
+            return False
+        else:
+            return True
+
 
 def chunker(seq: iter, size: int) -> Generator:
     """Helper function for splitting an iterable into a number
@@ -87,6 +94,8 @@ class Sample_Evaluator():
 
 
     def update_psi(self,
+                   model_template: FederatedModel,
+                   optimizer_template: Optimizers,
                    gradients: OrderedDict,
                    nodes_in_sample: list,
                    optimizer: Optimizers,
@@ -118,35 +127,26 @@ class Sample_Evaluator():
         -------
         None
         """
-
         recorded_values = {}
-
-        # Evaluating the performance of the final model.
-        final_model_score = final_model.evaluate_model()[1]
         
+        model_template.update_weights(final_model)
+        final_model_score = model_template.quick_evaluate()[1]
         recorded_values[tuple(gradients.keys())] = final_model_score
-        
         for node in nodes_in_sample:
             node_id = node.node_id
-            
-            # Deleting gradients of node i from the sample.
-            marginal_gradients = copy.deepcopy(gradients)
-            del marginal_gradients[node_id] 
-            # Cloning the last optimizer
-            marginal_optim = copy.deepcopy(optimizer)
-
-            # Reconstrcuting the marginal model
-            marginal_model = copy.deepcopy(previous_model)
-            marginal_grad_avg = Aggregators.compute_average(marginal_gradients) # AGGREGATING FUNCTION -> CHANGE IF NEEDED
-            marginal_weights = marginal_optim.fed_optimize(weights=marginal_model.get_weights(),
-                                                           delta=marginal_grad_avg)
-            marginal_model.update_weights(marginal_weights)
-            marginal_model_score = marginal_model.evaluate_model()[1]
-            self.partial_psi[iteration][node_id] = final_model_score - marginal_model_score
-            
-            recorded_values[tuple(marginal_gradients.keys())] = marginal_model_score
-            
-            print(f"Evaluated LOO of client {node}") #TODO
+            gradients_copy = copy.deepcopy(gradients)
+            del gradients_copy[node_id]
+            optimizer_template.set_weights(previous_delta=optimizer[0],
+                                           previous_momentum=optimizer[1],
+                                           learning_rate=optimizer[2])
+            grad_avg = Aggregators.compute_average(gradients_copy)
+            weights = optimizer_template.fed_optimize(weights=copy.deepcopy(previous_model),
+                                             delta = grad_avg)
+            model_template.update_weights(weights)
+            score = model_template.quick_evaluate()[1]
+            self.partial_psi[iteration][node_id] = final_model_score - score
+            recorded_values[tuple(gradients_copy.keys())] = score
+            print(f"Evaluated LOO score of client {node_id}")
             
         if return_coalitions == True:
             return recorded_values

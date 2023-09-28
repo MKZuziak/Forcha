@@ -110,11 +110,12 @@ class LSAA():
             recorded_values[tuple(appended_gradients.keys())] = appended_model_score
             
             self.partial_lsaa[iteration][node_id] = lsaa_score # Previously: lsaa_score / search_length
-            
-            print(f"Evaluated LSAA of client {node}") #TODO
+            print(f"Evaluated LSAA of client {node_id}") #TODO
+            del appended_model, appended_gradients, appended_optimizer, appended_weights, appended_grad_avg
+            del marginal_model, marginal_gradients, marginal_optim, marginal_weights, marginal_grad_avg
        
         if return_coalitions == True:
-                return recorded_values
+            return recorded_values
     
     def return_last_value(self,
                           iteration:int) -> dict:

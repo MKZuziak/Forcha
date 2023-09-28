@@ -8,6 +8,7 @@ from forcha.components.evaluator.evaluation_manager import Evaluation_Manager
 from forcha.components.archiver.archive_manager import Archive_Manager
 from forcha.components.settings.settings import Settings
 from forcha.utils.helpers import Helpers
+import torch
 import datasets
 import copy
 from multiprocessing import Pool
@@ -16,6 +17,13 @@ import numpy as np
 
 from multiprocessing import set_start_method
 set_start_method("spawn", force=True)
+
+def compare_for_debug(dict1, dict2):
+    for (row1, row2) in zip(dict1.values(), dict2.values()):
+        if False in (row1 == row2):
+            return False
+        else:
+            return True
 
 
 class Evaluator_Orchestrator(Orchestrator):
@@ -74,35 +82,30 @@ class Evaluator_Orchestrator(Orchestrator):
         # Initializing all the attributes using an instance of the Settings object.
         iterations = self.settings.iterations # Int, number of iterations
         nodes_number = self.settings.number_of_nodes # Int, number of nodes
-        local_warm_start = self.settings.local_warm_start #To remove in future
         nodes = [node for node in range(nodes_number)] # List of ints, list of nodes ids
         sample_size = self.settings.sample_size # Int, size of the sample
-        
-        # Initializing an instance of the Archiver class if enabled in the settings.
-        if self.settings.enable_archiver == True:
-            archive_manager = Archive_Manager(
-                archive_manager = self.settings.archiver_settings,
-                logger = self.orchestrator_logger)
-        
         # Initialization of the generator object    
-        self.generator = np.random.default_rng(self.settings.seed)
-        
+        self.Generator = np.random.default_rng(self.settings.seed)
         # Initializing an instance of the Optimizer class object.
         optimizer_settings = self.settings.optimizer_settings # Dict containing instructions for the optimizer, dict.
-        Optim = Optimizers(weights = self.central_model.get_weights(),
-                           settings=optimizer_settings)
+        self.Optimizer = Optimizers(weights = self.central_model.get_weights(),
+                                    settings=optimizer_settings)
         
         # Initializing the Evaluation Manager
-        evaluation_manager = Parallel_Manager(settings = self.settings.evaluator_settings,
-                                                model = self.central_model,
-                                                nodes = nodes,
-                                                iterations = iterations)
-        if self.full_debug:
-            self.orchestrator_logger.critical("DEBUG MANAGER IS ENABLED. THIS WILL REDUCE PERFORMANCE VISIBLY.")
-            debug_manager = Evaluation_Manager(settings = self.settings.evaluator_settings,
-                                               model = self.central_model,
-                                               nodes = nodes,
-                                               iterations = iterations)
+        if self.parallelization:
+            Evaluation_manager = Parallel_Manager(settings = self.settings.evaluator_settings,
+                                                  model = self.central_model,
+                                                  nodes = nodes,
+                                                  iterations = iterations)
+        else:
+            Evaluation_manager = Evaluation_Manager(settings = self.settings.evaluator_settings,
+                                                 model = self.central_model,
+                                                 nodes = nodes,
+                                                 iterations = iterations)
+        # Initializing an instance of the Archiver class if enabled in the settings.
+        if self.settings.enable_archiver == True:
+            Archive_manager = Archive_Manager(archive_manager = self.settings.archiver_settings,
+                logger = self.orchestrator_logger)
         # Creating (empty) federated nodes.
         nodes_green = create_nodes(nodes, 
                                    self.settings.nodes_settings)
@@ -113,28 +116,28 @@ class Evaluator_Orchestrator(Orchestrator):
         nodes_green = self.nodes_initialization(nodes_list=nodes_green,
                                                 model_list=model_list,
                                                 data_list=nodes_data)
+        model_template = copy.deepcopy(self.central_model) # Template for evaluation
+        optimizer_template = copy.deepcopy(self.Optimizer)
+        
         for iteration in range(iterations):
             self.orchestrator_logger.info(f"Iteration {iteration}")
             gradients = {}
             # Evaluation step: preserving the last version of the model and optimizer
-            evaluation_manager.preserve_previous_model(previous_model = self.central_model)
-            evaluation_manager.preserve_previous_optimizer(previous_optimizer = Optim)
-            if self.full_debug:
-                debug_manager.preserve_previous_model(previous_model = self.central_model)
-                debug_manager.preserve_previous_optimizer(previous_optimizer = Optim)
+            Evaluation_manager.preserve_previous_model(previous_model = self.central_model)
+            Evaluation_manager.preserve_previous_optimizer(previous_optimizer = self.Optimizer)
             
             # Sampling nodes and asynchronously apply the function
             sampled_nodes = sample_nodes(nodes_green, 
                                          sample_size=sample_size,
-                                         generator=self.generator) # SAMPLING FUNCTION -> CHANGE IF NEEDED
+                                         generator=self.Generator) # SAMPLING FUNCTION -> CHANGE IF NEEDED
             if self.batch_job:
                 for batch in Helpers.chunker(sampled_nodes, size=self.batch):
                     with Pool(sample_size) as pool:
                         results = [pool.apply_async(train_nodes, (node, 'gradients')) for node in batch]
                         # consume the results
                         for result in results:
-                            node_id, model_weights = result.get()
-                            gradients[node_id] = copy.deepcopy(model_weights)
+                            node_id, model_gradients = result.get()
+                            gradients[node_id] = copy.deepcopy(model_gradients)
             else:
                 with Pool(sample_size) as pool:
                     results = [pool.apply_async(train_nodes, (node, 'gradients')) for node in sampled_nodes]
@@ -147,34 +150,30 @@ class Evaluator_Orchestrator(Orchestrator):
             # Computing the average
             grad_avg = Aggregators.compute_average(gradients) # AGGREGATING FUNCTION -> CHANGE IF NEEDED
             # Upadting the weights using gradients and momentum
-            updated_weights = Optim.fed_optimize(weights=self.central_model.get_weights(),
-                                                    delta=grad_avg)
+            updated_weights = self.Optimizer.fed_optimize(weights=self.central_model.get_weights(),
+                                                          delta=grad_avg)
             # Updating the orchestrator
             self.central_model.update_weights(updated_weights)
             
             # Evaluation step: preserving the updated central model
-            evaluation_manager.preserve_updated_model(updated_model = self.central_model)
+            Evaluation_manager.preserve_updated_model(updated_model = self.central_model)
             # Evaluation step: calculating all the marginal contributions
-            evaluation_manager.track_results(gradients = grad_copy,
+            Evaluation_manager.track_results(gradients = grad_copy,
                                              nodes_in_sample = sampled_nodes,
-                                             iteration = iteration)
-            if self.full_debug:
-                debug_manager.preserve_updated_model(updated_model=self.central_model)
-                debug_manager.track_results(gradients = grad_copy,
-                                            nodes_in_sample = sampled_nodes,
-                                            iteration = iteration)
+                                             iteration = iteration,
+                                             model_template = model_template,
+                                             optimizer_template = optimizer_template)
             # Updating the nodes
             for node in nodes_green:
                 node.model.update_weights(updated_weights)         
                    
             # Passing results to the archiver -> only if so enabled in the settings.
             if self.settings.enable_archiver == True:
-                archive_manager.archive_training_results(iteration = iteration,
+                Archive_manager.archive_training_results(iteration = iteration,
                                                         central_model=self.central_model,
                                                         nodes=nodes_green)
+            #torch.cuda.empty_cache()
         # Evaluation step: Calling evaluation manager to preserve all steps
-        results = evaluation_manager.finalize_tracking(path = archive_manager.metrics_savepath)
-        if self.full_debug:
-            debug_manager.finalize_tracking(path = archive_manager.metrics_savepath)
+        results = Evaluation_manager.finalize_tracking(path = Archive_Manager.metrics_savepath)
         self.orchestrator_logger.critical("Training complete")
         return 0
