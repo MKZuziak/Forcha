@@ -1,6 +1,7 @@
 from forcha.exceptions.settingexception import ArchiverSettingsException
 from forcha.models.pytorch.federated_model import FederatedModel
 from forcha.utils.handlers import Handler
+from forcha.components.nodes.federated_node import FederatedNode
 import os
 
 class Archive_Manager():
@@ -42,7 +43,7 @@ class Archive_Manager():
     def archive_training_results(self,
                         iteration: int,
                         central_model: FederatedModel,
-                        nodes: list[FederatedModel]
+                        nodes: list[FederatedNode]
     ):
         if self.orchestrator_metrics:
             if self.save_results:
@@ -75,10 +76,10 @@ class Archive_Manager():
                                               model = node.model,
                                               logger = self.logger)
                 
-                if self.nodes_save_path:
-                    for node in nodes:
-                        node.store_model_on_disk(iteration = iteration,
-                                                 path = self.nodes_save_path)
+            if self.nodes_save_path:
+                for node in nodes:
+                    node.model.store_model_on_disk(iteration = iteration,
+                                                path = self.nodes_save_path)
     
     def archive_contribution_results(self,
                                      results: dict,
