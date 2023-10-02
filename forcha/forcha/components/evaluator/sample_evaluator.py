@@ -130,20 +130,20 @@ class Sample_Evaluator():
         recorded_values = {}
         
         model_template.update_weights(final_model)
-        final_model_score = model_template.quick_evaluate()[1]
+        final_model_score = model_template.evaluate_model()[1]
         recorded_values[tuple(gradients.keys())] = final_model_score
         for node in nodes_in_sample:
             node_id = node.node_id
             gradients_copy = copy.deepcopy(gradients)
             del gradients_copy[node_id]
-            optimizer_template.set_weights(previous_delta=optimizer[0],
-                                           previous_momentum=optimizer[1],
-                                           learning_rate=optimizer[2])
+            optimizer_template.set_weights(previous_delta=copy.deepcopy(optimizer[0]),
+                                           previous_momentum=copy.deepcopy(optimizer[1]),
+                                           learning_rate=copy.deepcopy(optimizer[2]))
             grad_avg = Aggregators.compute_average(gradients_copy)
             weights = optimizer_template.fed_optimize(weights=copy.deepcopy(previous_model),
-                                             delta = grad_avg)
+                                                      delta = grad_avg)
             model_template.update_weights(weights)
-            score = model_template.quick_evaluate()[1]
+            score = model_template.evaluate_model()[1]
             self.partial_psi[iteration][node_id] = final_model_score - score
             recorded_values[tuple(gradients_copy.keys())] = score
             print(f"Evaluated LOO score of client {node_id}")

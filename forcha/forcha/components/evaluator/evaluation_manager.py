@@ -34,7 +34,8 @@ class Evaluation_Manager():
 
     def __init__(self,
                 settings: dict,
-                model: FederatedModel,
+                model_template: FederatedModel,
+                optimizer_template: Optimizers,
                 nodes: list = None,
                 iterations: int = None) -> None:
         """Manages the process of evaluation. Creates an instance of Evaluation_Manager 
@@ -76,6 +77,8 @@ class Evaluation_Manager():
         self.updated_c_model = None
         self.previous_optimizer = None
         self.nodes = nodes
+        self.model_template = model_template
+        self.optimizer_template = optimizer_template
         
         # Sets up a flag for each available method of evaluation.
         # Flag: Shapley-OneRound Method
@@ -132,7 +135,7 @@ class Evaluation_Manager():
         # Initialization: LOO-InSample Method and Shapley-InSample Method
         if self.flag_shap_or or self.flag_loo_or:
             self.or_evaluator = OR_Evaluator(settings=settings,
-                                             model=model)
+                                             model=self.model_template)
         # Initialization: LOO-InSample Method
         if self.flag_sample_evaluator == True:
             try:
@@ -225,7 +228,7 @@ class Evaluation_Manager():
         -------
         None
         """
-        self.previous_c_model = copy.deepcopy(previous_model.get_weights())
+        self.previous_c_model = previous_model
     
 
     def preserve_updated_model(self,
@@ -243,7 +246,7 @@ class Evaluation_Manager():
         -------
         None
        """
-        self.updated_c_model = copy.deepcopy(updated_model.get_weights())
+        self.updated_c_model = updated_model
     
     
     def preserve_previous_optimizer(self,
@@ -261,7 +264,7 @@ class Evaluation_Manager():
         -------
         None
         """
-        self.previous_optimizer = copy.deepcopy(previous_optimizer.get_weights())
+        self.previous_optimizer = previous_optimizer
     
     
     def get_last_results(self,
@@ -282,9 +285,7 @@ class Evaluation_Manager():
     def track_results(self,
                         gradients: OrderedDict,
                         nodes_in_sample: list,
-                        iteration: int,
-                        model_template: FederatedModel,
-                        optimizer_template):
+                        iteration: int):
         """Method used to track_results after each training round.
         Because the Orchestrator abstraction should be free of any
         unnecessary encumbrance, the Evaluation_Manager.track_results()
@@ -314,14 +315,14 @@ class Evaluation_Manager():
         if self.flag_sample_evaluator:
             if iteration in self.scheduler['in_sample_loo']: # Checks scheduler
                 debug_values = self.sample_evaluator.update_psi(
-                    model_template = model_template,
-                    optimizer_template = optimizer_template,
+                    model_template = self.model_template,
+                    optimizer_template = self.optimizer_template,
                     gradients = gradients,
                     nodes_in_sample = nodes_in_sample,
                     iteration = iteration,
-                    optimizer = self.previous_optimizer,
-                    final_model = self.updated_c_model,
-                    previous_model= self.previous_c_model)
+                    optimizer = copy.deepcopy(self.previous_optimizer),
+                    final_model = copy.deepcopy(self.updated_c_model),
+                    previous_model= copy.deepcopy(self.previous_c_model))
                 # Preserving debug values (if enabled)
                 if self.full_debug:
                     if iteration  == 0:
@@ -365,13 +366,15 @@ class Evaluation_Manager():
         #LSAA Method
         if self.flag_lsaa_evaluator:
             if iteration in self.scheduler['LSAA']: # Checks scheduler
-                debug_values = self.lsaa_evaluator.update_lsaa(gradients = gradients,
-                                    nodes_in_sample = nodes_in_sample,
-                                    iteration = iteration,
-                                    search_length = self.search_length,
-                                    optimizer = self.previous_optimizer,
-                                    final_model = self.updated_c_model,
-                                    previous_model = self.previous_c_model)
+                debug_values = self.lsaa_evaluator.update_lsaa(
+                    model_template = self.model_template,
+                    optimizer_template = self.optimizer_template,
+                    gradients = gradients,
+                    nodes_in_sample = nodes_in_sample,
+                    iteration = iteration,
+                    search_length = self.search_length,
+                    optimizer = self.previous_optimizer,
+                    previous_model=self.previous_c_model)
             
                             # Preserving debug values (if enabled)
                 if self.full_debug:

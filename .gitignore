@@ -1,3 +1,4 @@
+archiver_from*
 forcha/tests/examples/mnist_lsaa/col_values_debug_exlsaa.csv
 forcha/tests/examples/mnist_lsaa/col_values_debug_loo.csv
 forcha/tests/examples/mnist_lsaa/col_values_debug_lsaa.csv

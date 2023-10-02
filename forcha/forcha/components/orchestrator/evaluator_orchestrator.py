@@ -25,7 +25,6 @@ def compare_for_debug(dict1, dict2):
         else:
             return True
 
-
 class Evaluator_Orchestrator(Orchestrator):
     """Orchestrator is a central object necessary for performing the simulation.
         It connects the nodes, maintain the knowledge about their state and manages the
@@ -90,18 +89,6 @@ class Evaluator_Orchestrator(Orchestrator):
         optimizer_settings = self.settings.optimizer_settings # Dict containing instructions for the optimizer, dict.
         self.Optimizer = Optimizers(weights = self.central_model.get_weights(),
                                     settings=optimizer_settings)
-        
-        # Initializing the Evaluation Manager
-        if self.parallelization:
-            Evaluation_manager = Parallel_Manager(settings = self.settings.evaluator_settings,
-                                                  model = self.central_model,
-                                                  nodes = nodes,
-                                                  iterations = iterations)
-        else:
-            Evaluation_manager = Evaluation_Manager(settings = self.settings.evaluator_settings,
-                                                 model = self.central_model,
-                                                 nodes = nodes,
-                                                 iterations = iterations)
         # Initializing an instance of the Archiver class if enabled in the settings.
         if self.settings.enable_archiver == True:
             Archive_manager = Archive_Manager(archive_manager = self.settings.archiver_settings,
@@ -116,15 +103,27 @@ class Evaluator_Orchestrator(Orchestrator):
         nodes_green = self.nodes_initialization(nodes_list=nodes_green,
                                                 model_list=model_list,
                                                 data_list=nodes_data)
-        model_template = copy.deepcopy(self.central_model) # Template for evaluation
-        optimizer_template = copy.deepcopy(self.Optimizer)
+        
+        # Initializing the Evaluation Manager
+        if self.parallelization:
+            Evaluation_manager = Parallel_Manager(settings = self.settings.evaluator_settings,
+                                                  model_template = copy.deepcopy(self.central_model),
+                                                  optimizer_template = copy.deepcopy(self.Optimizer),
+                                                  nodes = nodes,
+                                                  iterations = iterations)
+        else:
+            Evaluation_manager = Evaluation_Manager(settings = self.settings.evaluator_settings,
+                                                 model_template = copy.deepcopy(self.central_model),
+                                                 optimizer_template = copy.deepcopy(self.Optimizer),
+                                                 nodes = nodes,
+                                                 iterations = iterations)
         
         for iteration in range(iterations):
             self.orchestrator_logger.info(f"Iteration {iteration}")
             gradients = {}
             # Evaluation step: preserving the last version of the model and optimizer
-            Evaluation_manager.preserve_previous_model(previous_model = self.central_model)
-            Evaluation_manager.preserve_previous_optimizer(previous_optimizer = self.Optimizer)
+            Evaluation_manager.preserve_previous_model(previous_model = copy.deepcopy(self.central_model.get_weights()))
+            Evaluation_manager.preserve_previous_optimizer(previous_optimizer = copy.deepcopy(self.Optimizer.get_weights()))
             
             # Sampling nodes and asynchronously apply the function
             sampled_nodes = sample_nodes(nodes_green, 
@@ -156,13 +155,11 @@ class Evaluator_Orchestrator(Orchestrator):
             self.central_model.update_weights(updated_weights)
             
             # Evaluation step: preserving the updated central model
-            Evaluation_manager.preserve_updated_model(updated_model = self.central_model)
+            Evaluation_manager.preserve_updated_model(updated_model = copy.deepcopy(self.central_model.get_weights()))
             # Evaluation step: calculating all the marginal contributions
             Evaluation_manager.track_results(gradients = grad_copy,
                                              nodes_in_sample = sampled_nodes,
-                                             iteration = iteration,
-                                             model_template = model_template,
-                                             optimizer_template = optimizer_template)
+                                             iteration = iteration)
             # Updating the nodes
             for node in nodes_green:
                 node.model.update_weights(updated_weights)         
@@ -173,7 +170,9 @@ class Evaluator_Orchestrator(Orchestrator):
                                                         central_model=self.central_model,
                                                         nodes=nodes_green)
             #torch.cuda.empty_cache()
+            print("DEBUG CONFIRMED")
         # Evaluation step: Calling evaluation manager to preserve all steps
-        results = Evaluation_manager.finalize_tracking(path = Archive_Manager.metrics_savepath)
+        results = Evaluation_manager.finalize_tracking(path = Archive_manager.metrics_savepath)
+        print(results)
         self.orchestrator_logger.critical("Training complete")
         return 0

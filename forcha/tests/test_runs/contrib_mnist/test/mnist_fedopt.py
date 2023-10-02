@@ -13,7 +13,7 @@ def simulation():
     cwd = os.getcwd()
     config = {
          "orchestrator": {
-            "iterations": 140,
+            "iterations": 40,
             "number_of_nodes": 3,
             "sample_size": 3,
             'enable_archiver': True,
@@ -36,7 +36,7 @@ def simulation():
             "Shapley_OR": False,
             "IN_SAMPLE_LOO": True,
             "IN_SAMPLE_SHAP": False,
-            "LSAA": False,
+            "LSAA": True,
             "EXTENDED_LSAA": False,
             "ADAPTIVE_LSAA": False,
             "line_search_length": 1,

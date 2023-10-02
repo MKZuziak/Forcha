@@ -13,10 +13,11 @@ import csv
 class Parallel_Manager(Evaluation_Manager):
     def __init__(self, 
                  settings: dict, 
-                 model: FederatedModel, 
+                 model_template: FederatedModel,
+                 orchestrator_template,  
                  nodes: list = None, 
                  iterations: int = None) -> None:
-        super().__init__(settings, model, nodes, iterations)
+        super().__init__(settings, model_template, orchestrator_template, nodes, iterations)
         # Sets up a flag for each available method of evaluation.
         # Flag: Shapley-OneRound Method
         # Flag: LOO-InSample Method
