@@ -37,9 +37,9 @@ def simulation():
             "IN_SAMPLE_LOO": True,
             "IN_SAMPLE_SHAP": False,
             "LSAA": True,
-            "EXTENDED_LSAA": False,
+            "EXTENDED_LSAA": True,
             "ADAPTIVE_LSAA": False,
-            "line_search_length": 1,
+            "line_search_length": 4,
             "preserve_evaluation": {
                 "preserve_partial_results": True,
                 "preserve_final_results": True},

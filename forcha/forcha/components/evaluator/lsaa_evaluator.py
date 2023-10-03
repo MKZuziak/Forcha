@@ -39,10 +39,10 @@ class LSAA():
                     optimizer_template: Optimizers,
                     gradients: OrderedDict,
                     nodes_in_sample: list,
-                    optimizer: Optimizers,
+                    optimizer: OrderedDict,
                     search_length: int,
                     iteration: int,
-                    previous_model: FederatedModel,
+                    previous_model: OrderedDict,
                     return_coalitions: bool = True):
         """Method used to track_results after each training round.
         Given the graidnets, ids of the nodes included in sample,

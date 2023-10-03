@@ -394,12 +394,15 @@ class Evaluation_Manager():
         #EXLSAA Method
         if self.flag_exlsaa_evaluator:
             if iteration in self.scheduler['EXLSAA']: # Checks scheduler
-                debug_values = self.exlsaa_evaluator.update_lsaa(gradients = gradients,
-                                                                 nodes_in_sample = nodes_in_sample,
-                                                                 iteration = iteration,
-                                                                 search_length = self.search_length,
-                                                                 optimizer = self.previous_optimizer,
-                                                                 previous_model = self.previous_c_model)
+                debug_values = self.exlsaa_evaluator.update_lsaa(
+                    model_template = self.model_template,
+                    optimizer_template = self.optimizer_template,
+                    gradients = gradients,
+                    nodes_in_sample = nodes_in_sample,
+                    iteration = iteration,
+                    search_length = self.search_length,
+                    optimizer = self.previous_optimizer,
+                    previous_model=self.previous_c_model)
             
         # Preserving debug values (if enabled)
                 if self.full_debug:
