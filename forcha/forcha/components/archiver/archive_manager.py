@@ -20,6 +20,7 @@ class Archive_Manager():
                 self.only_log = archive_manager["log_results"]
             
             self.save_orchestrator_model = archive_manager["save_orchestrator_model"]
+            self.save_nodes_model = archive_manager['save_nodes_model']
 
             
             # Paths and filenames for preserving metrics
@@ -76,7 +77,7 @@ class Archive_Manager():
                                               model = node.model,
                                               logger = self.logger)
                 
-            if self.nodes_save_path:
+            if self.save_nodes_model:
                 for node in nodes:
                     node.model.store_model_on_disk(iteration = iteration,
                                                 path = self.nodes_save_path)
