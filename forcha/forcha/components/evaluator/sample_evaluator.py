@@ -4,7 +4,7 @@ import numpy as np
 import copy
 import math
 from multiprocessing import Pool, Manager
-from forcha.models.pytorch.federated_model import FederatedModel
+from forcha.models.federated_model import FederatedModel
 from collections import OrderedDict
 from _collections_abc import Generator
 from forcha.utils.optimizers import Optimizers

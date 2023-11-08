@@ -1,6 +1,6 @@
 # LIBRARY MODULES IMPORT
 from forcha.utils.computations import Subsets
-from forcha.models.pytorch.federated_model import FederatedModel
+from forcha.models.federated_model import FederatedModel
 from forcha.utils.computations import Aggregators
 from forcha.utils.optimizers import Optimizers
 from copy import deepcopy

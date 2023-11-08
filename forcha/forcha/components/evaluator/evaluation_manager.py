@@ -3,7 +3,7 @@ from forcha.components.evaluator.lsaa_evaluator import LSAA
 from forcha.components.evaluator.exlsaa_evaluator import EXLSAA
 from forcha.components.evaluator.sample_evaluator import Sample_Evaluator
 from forcha.components.evaluator.sample_evaluator import Sample_Shapley_Evaluator
-from forcha.models.pytorch.federated_model import FederatedModel
+from forcha.models.federated_model import FederatedModel
 from forcha.exceptions.evaluatorexception import Sample_Evaluator_Init_Exception
 from forcha.utils.optimizers import Optimizers
 from collections import OrderedDict

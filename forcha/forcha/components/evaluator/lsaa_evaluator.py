@@ -1,6 +1,6 @@
 import numpy as np
 import copy
-from forcha.models.pytorch.federated_model import FederatedModel
+from forcha.models.federated_model import FederatedModel
 from forcha.utils.optimizers import Optimizers
 from forcha.utils.computations import Aggregators
 from collections import OrderedDict

@@ -48,9 +48,7 @@ class Fedopt_Orchestrator(Orchestrator):
         super().__init__(settings, **kwargs)
     
 
-    def train_protocol(self,
-                nodes_data: list[datasets.arrow_dataset.Dataset, 
-                datasets.arrow_dataset.Dataset]) -> None:
+    def train_protocol(self) -> None:
         """"Performs a full federated training according to the initialized
         settings. The train_protocol of the fedopt.orchestrator.Fedopt_Orchestrator
         follows a popular FedAvg generalisation, FedOpt. Instead of weights from each
@@ -70,80 +68,53 @@ class Fedopt_Orchestrator(Orchestrator):
         int
             Returns 0 on the successful completion of the training.
         """
-        # Initializing all the attributes using an instance of the Settings object.
-        iterations = self.settings.iterations # Int, number of iteraions
-        nodes_number = self.settings.number_of_nodes # Int, number of nodes
-        local_warm_start = self.settings.local_warm_start # Note: not implemented yet.
-        nodes = [node for node in range(nodes_number)] # list of int, individual ids
-        sample_size = self.settings.sample_size # int, size of the sample
-        
-        # Initializing an instance of the Archiver class if enabled in the settings.
-        if self.settings.enable_archiver == True:
-            archive_manager = Archive_Manager(
-                archive_manager = self.settings.archiver_settings,
-                logger = self.orchestrator_logger)
-        
-        # Initialization of the generator object    
-        self.generator = np.random.default_rng(self.settings.seed)
-        
-        # Initializing an instance of the Optimizer class object.
+        # OPTIMIZER CLASS OBJECT
         optimizer_settings = self.settings.optimizer_settings
-        Optim = Optimizers(weights = self.central_model.get_weights(),
-                           settings=optimizer_settings)
-        
-        # Creating (empty) federated nodes.
-        nodes_green = create_nodes(nodes, self.settings.nodes_settings)
-        
-        # Creating a list of models for the nodes.
-        model_list = self.model_initialization(nodes_number=nodes_number,
-                                               model=self.central_net)
-        
-        # Initializing nodes -> loading the data and models onto empty nodes.
-        nodes_green = self.nodes_initialization(nodes_list=nodes_green,
-                                                model_list=model_list,
-                                                data_list=nodes_data)
+        self.Optimizer = Optimizers(weights = self.central_model.get_weights(),
+                                    settings=optimizer_settings)
 
-        # 3. TRAINING PHASE ----- FEDOPT
-        # create the pool of workers
-        for iteration in range(iterations):
+        # TRAINING PHASE ----- FEDOPT
+        # FEDOPT - CREATE POOL OF WORKERS
+        for iteration in range(self.iterations):
             self.orchestrator_logger.info(f"Iteration {iteration}")
             gradients = {}
             # Sampling nodes and asynchronously apply the function
-            sampled_nodes = sample_nodes(nodes_green, 
-                                         sample_size=sample_size,
-                                         generator=self.generator) # SAMPLING FUNCTION -> CHANGE IF NEEDED
+            sampled_nodes = sample_nodes(self.nodes_green, 
+                                         sample_size=self.sample_size,
+                                         generator=self.generator) # SAMPLING FUNCTION
+            # FEDAVG - TRAINING PHASE
+            # OPTION: BATCH TRAINING
             if self.batch_job:
                 self.orchestrator_logger.info(f"Entering batched job, size of the batch {self.batch}")
                 for batch in Helpers.chunker(sampled_nodes, size=self.batch):
-                    with Pool(sample_size) as pool:
+                    with Pool(self.sample_size) as pool:
                         results = [pool.apply_async(train_nodes, (node, 'gradients')) for node in batch]
                         # consume the results
                         for result in results:
                             node_id, model_weights = result.get()
                             gradients[node_id] = copy.deepcopy(model_weights)
+            # OPTION: NON-BATCH TRAINING
             else:
-                with Pool(sample_size) as pool:
+                with Pool(self.sample_size) as pool:
                     results = [pool.apply_async(train_nodes, (node, 'gradients')) for node in sampled_nodes]
-                    # consume the results
                     for result in results:
                         node_id, model_gradients = result.get()
                         gradients[node_id] = copy.deepcopy(model_gradients)
-            # Computing the average
-            grad_avg = Aggregators.compute_average(gradients) # AGGREGATING FUNCTION -> CHANGE IF NEEDED
-            # Upadting the weights using gradients and momentum
-            updated_weights = Optim.fed_optimize(weights=self.central_model.get_weights(),
-                                                    delta=grad_avg)
-            # Updating the orchestrator
-            self.central_model.update_weights(updated_weights)
-            # Updating the nodes
-            for node in nodes_green:
-                node.model.update_weights(updated_weights)         
+            # FEDOPT: AGGREGATING FUNCTION
+            grad_avg = Aggregators.compute_average(gradients) # AGGREGATING FUNCTION
+            updated_weights = self.Optimizer.fed_optimize(weights=self.central_model.get_weights(),
+                                                          delta=grad_avg)
+            # FEDOPT: UPDATING THE CENTRAL MODEL 
+            self.central_model.update_weights(updated_weights)     
+            # FEDOPT: UPDATING THE NODES
+            for node in self.nodes_green:
+                node.model.update_weights(updated_weights)    
                    
-            # Passing results to the archiver -> only if so enabled in the settings.
-            if self.settings.enable_archiver == True:
-                archive_manager.archive_training_results(iteration = iteration,
-                                                        central_model=self.central_model,
-                                                        nodes=nodes_green)
+            # ARCHIVER: PRESERVING RESULTS
+            if self.enable_archiver:
+                self.archive_manager.archive_training_results(iteration = iteration,
+                                                              central_model=self.central_model,
+                                                              nodes=self.nodes_green)
             
             if self.full_debug == True:
                 log_gpu_memory(iteration=iteration)

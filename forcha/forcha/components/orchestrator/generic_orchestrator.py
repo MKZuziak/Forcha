@@ -1,18 +1,18 @@
 import datasets 
 import copy
-from typing import Union
 from forcha.components.nodes.federated_node import FederatedNode
-from forcha.models.pytorch.federated_model import FederatedModel
+from forcha.models.federated_model import FederatedModel
 from forcha.utils.computations import Aggregators
 from forcha.utils.loggers import Loggers
 from forcha.utils.orchestrations import create_nodes, check_health, sample_nodes, train_nodes
 from forcha.components.archiver.archive_manager import Archive_Manager
 from forcha.components.settings.settings import Settings
-from multiprocessing import Pool
-from torch import nn
 from forcha.utils.debugger import log_gpu_memory
 from forcha.utils.helpers import Helpers
 import numpy as np
+from multiprocessing import Pool
+from torch import nn
+from typing import Union
 
 # set_start_method set to 'spawn' to ensure compatibility across platforms.
 from multiprocessing import set_start_method
@@ -23,7 +23,32 @@ class Orchestrator():
     """Orchestrator is a central object necessary for performing the simulation.
         It connects the nodes, maintain the knowledge about their state and manages the
         multithread pool. generic_orchestrator.orchestrator is a parent to all more
-        specific orchestrators."""
+        specific orchestrators.
+        
+        Attributes
+        ----------
+        settings: Forcha.settings.Settings
+            A settings object containing all the settings used during the simulation.
+        net: nn.Module
+            A template of the neural network architecture that is loaded into FederatedModel.
+        central_model: forcha.models.federated_model.FederatedModel
+            A FederatedModel object attached to the orchestrator.
+        orchestrator_logger: forcha.utils.loggers.Loggers
+            A pre-configured logger attached to the Orchestrator.
+        validation_data: datasets.arrow_dataset.Dataset
+            A datasets.arrow_dataset.Dataset with validation data for the Orchestrator.
+        full_debug: Bool
+            A boolean flag enabling full debug mode of the orchestrator (default to False).
+        batch_job: Bool
+            A boolean flag diasbling simultaneous training of the clients (default to False).
+        (optional) batch: int
+            If batch_job is set to True, this will be a number of clients allowed
+            to train simultaneously.
+        parallelization: Bool
+            A boolean flag enabling parallelization of certain operations (default to False)
+        generator: np.random.default_rng
+            A random number generator attached to the Orchestrator.
+        """
     
     
     def __init__(self, 
@@ -47,22 +72,26 @@ class Orchestrator():
        None
         """
         self.settings = settings
-        self.model = None
         # Special option to enter a full debug mode.
         if kwargs.get("full_debug"):
             self.full_debug = True
         else:
             self.full_debug = False
+        # Batch job enabled or disabled
         if kwargs.get("batch_job"):
             self.batch_job = True
             self.batch = kwargs["batch"]
         else:
             self.batch_job = False
+        # Parallelization enabled or disabled
         if kwargs.get("parallelization"):
             self.parallelization = True
         else:
             self.parallelization = False
         self.orchestrator_logger = Loggers.orchestrator_logger()
+        
+        # Initialization of the generator object    
+        self.generator = np.random.default_rng(self.settings.seed)
     
     
     def prepare_orchestrator(self, 
@@ -78,7 +107,6 @@ class Orchestrator():
             Validation dataset that will be used by the Orchestrator.
         model : torch.nn
             Model architecture that will be used throughout the training.
-        
         Returns
         -------
         None"""
@@ -95,7 +123,7 @@ class Orchestrator():
                              model: Union[nn.Module, list[nn.Module]],
                              local_warm_start: bool = False,
                              ) -> list[nn.Module]:
-        """Creates a list of neural nets (not FederatedModels!) that will be
+        """Creates a list of neural nets (not FederatedModels) that will be
         passed onto the nodes and converted into FederatedModels. If local_warm_start
         is set to True, the method call should be passed a list of models which
         length is equall to the number of nodes.
@@ -167,18 +195,14 @@ class Orchestrator():
                             orchestrator_logger=self.orchestrator_logger):
                 nodes_green.append(result)
         return nodes_green # Returning initialized nodes
-
-
-    def train_protocol(self,
-                nodes_data: list[datasets.arrow_dataset.Dataset, 
-                datasets.arrow_dataset.Dataset]) -> None:
-        """Performs a full federated training according to the initialized
-        settings. The train_protocol of the generic_orchestrator.Orchestrator
-        follows a classic FedAvg algorithm - it averages the local weights
-        and aggregates them taking a weighted average.
-        SOURCE: Communication-Efficient Learning of
-        Deep Networks from Decentralized Data, H.B. McMahan et al.
-
+    
+    
+    def prepare_training(self,
+                         nodes_data: list[datasets.arrow_dataset.Dataset,
+                                          datasets.arrow_dataset.Dataset]) -> None:
+        """Prepares all the necessary elements of the training, including nodes and helpers.
+        Must be run before the train_protocol method is invoked.
+        
         Parameters
         ----------
         nodes_data: list[datasets.arrow_dataset.Dataset, datasets.arrow_dataset.Dataset] 
@@ -189,72 +213,84 @@ class Orchestrator():
         Int
             Returns 0 on the successful completion of the training."""
         
-        # Initializing all the attributes using an instance of the Settings object.
-        iterations = self.settings.iterations # Iterations: int
-        nodes_number = self.settings.number_of_nodes # Number of nodes: int
-        local_warm_start = self.settings.local_warm_start # Note: not implemeneted yet.
-        nodes = [node for node in range(nodes_number)] # List containing int
-        sample_size = self.settings.sample_size # Sample size: int
+        self.iterations = self.settings.iterations
+        self.nodes_number = self.settings.number_of_nodes
+        self.local_warm_start = self.settings.local_warm_start
+        self.sample_size = self.settings.sample_size
+        self.nodes = [node for node in range(self.nodes_number)]
+        self.enable_archiver = self.settings.enable_archiver
         
         # Initializing an instance of the Archiver class if enabled in the settings.
-        if self.settings.enable_archiver == True:
-            archive_manager = Archive_Manager(
+        if self.enable_archiver:
+            self.archive_manager = Archive_Manager(
                 archive_manager = self.settings.archiver_settings,
-                logger = self.orchestrator_logger)
+                logger = self.orchestrator_logger
+            )
         
-        # Initialization of the generator object    
-        self.generator = np.random.default_rng(self.settings.seed)
-
-        # Creating (empty) federated nodes.
-        nodes_green = create_nodes(nodes, 
-                                   self.settings.nodes_settings)
-
-        # Creating a list of models for the nodes.
-        model_list = self.model_initialization(nodes_number=nodes_number,
-                                               model=self.central_net) # return deep copies of nets.
+        # Creating nodes
+        # Creating (empty) federated nodes
+        self.nodes_green = create_nodes(self.nodes,
+                                        self.settings.nodes_settings)
         
-        # Initializing nodes -> loading the data and models onto empty nodes.
-        nodes_green = self.nodes_initialization(nodes_list=nodes_green,
-                                                model_list=model_list,
-                                                data_list=nodes_data) # no deep copies of nets created at this stage
-    
+        self.model_list = self.model_initialization(nodes_number=self.nodes_number,
+                                                    model=self.central_net)
+        
+        self.nodes_green = self.nodes_initialization(nodes_list=self.nodes_green,
+                                                model_list=self.model_list,
+                                                data_list=nodes_data)      
+
+    def train_protocol(self) -> None:
+        """Performs a full federated training according to the initialized
+        settings. The train_protocol of the generic_orchestrator.Orchestrator
+        follows a classic FedAvg algorithm - it averages the local weights
+        and aggregates them taking a weighted average.
+        SOURCE: Communication-Efficient Learning of
+        Deep Networks from Decentralized Data, H.B. McMahan et al.
+
+        Parameters
+        ----------
+        -------------
+        Returns:
+        Int
+            Returns 0 on the successful completion of the training."""
     # TRAINING PHASE ----- FEDAVG
-        # create the pool of workers
-        for iteration in range(iterations):
+        # FEDAVG - CREATE POOL OF WORKERS
+        for iteration in range(self.iterations):
             self.orchestrator_logger.info(f"Iteration {iteration}")
             weights = {}
             # Sampling nodes and asynchronously apply the function
-            sampled_nodes = sample_nodes(nodes_green, 
-                                         sample_size=sample_size,
-                                         generator=self.generator) # SAMPLING FUNCTION -> CHANGE IF NEEDED
+            sampled_nodes = sample_nodes(self.nodes_green, 
+                                         sample_size=self.sample_size,
+                                         generator=self.generator) # SAMPLING FUNCTION
+            # FEDAVG - TRAINING PHASE
+            # OPTION: BATCH TRAINING
             if self.batch_job:
                 for batch in Helpers.chunker(sampled_nodes, size=self.batch):
-                    with Pool(sample_size) as pool:
+                    with Pool(self.sample_size) as pool:
                         results = [pool.apply_async(train_nodes, (node,)) for node in batch]
-                        # consume the results
                         for result in results:
                             node_id, model_weights = result.get()
                             weights[node_id] = model_weights
+            # OPTION: NON-BATCH TRAINING
             else:
-                with Pool(sample_size) as pool:
+                with Pool(self.sample_size) as pool:
                     results = [pool.apply_async(train_nodes, (node,)) for node in sampled_nodes]
-                    # consume the results
                     for result in results:
                         node_id, model_weights = result.get()
                         weights[node_id] = model_weights
-            # Computing the average
-            avg = Aggregators.compute_average(weights) # AGGREGATING FUNCTION -> CHANGE IF NEEDED
-            # Updating the nodes
-            for node in nodes_green:
+            # FEDAVG: AGGREGATING FUNCTION
+            avg = Aggregators.compute_average(weights) # AGGREGATING FUNCTION
+            # FEDAVG: UPDATING THE NODES
+            for node in self.nodes_green:
                 node.model.update_weights(avg)
-            # Upadting the orchestrator
+            # FEDAVG: UPDATING THE CENTRAL MODEL 
             self.central_model.update_weights(avg)
 
-            # Passing results to the archiver -> only if so enabled in the settings.
+            # ARCHIVER: PRESERVING RESULTS
             if self.settings.enable_archiver == True:
-                archive_manager.archive_training_results(iteration = iteration,
-                                                        central_model=self.central_model,
-                                                        nodes=nodes_green)
+                self.archive_manager.archive_training_results(iteration = iteration,
+                                                              central_model=self.central_model,
+                                                              nodes=self.nodes_green)
             if self.full_debug == True:
                 log_gpu_memory(iteration=iteration)
 

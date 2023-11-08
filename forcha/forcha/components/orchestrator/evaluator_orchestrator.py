@@ -5,7 +5,6 @@ from forcha.utils.orchestrations import create_nodes, sample_nodes, train_nodes
 from forcha.utils.optimizers import Optimizers
 from forcha.components.evaluator.parallel.parallel_manager import Parallel_Manager
 from forcha.components.evaluator.evaluation_manager import Evaluation_Manager
-from forcha.components.archiver.archive_manager import Archive_Manager
 from forcha.components.settings.settings import Settings
 from forcha.utils.helpers import Helpers
 import torch
@@ -55,9 +54,7 @@ class Evaluator_Orchestrator(Orchestrator):
         super().__init__(settings, **kwargs)
     
 
-    def train_protocol(self,
-                nodes_data: list[datasets.arrow_dataset.Dataset, 
-                datasets.arrow_dataset.Dataset]) -> None:
+    def train_protocol(self) -> None:
         """"Performs a full federated training according to the initialized
         settings. The train_protocol of the orchestrator.evaluator_orchestrator
         follows a popular FedAvg generalisation, FedOpt. Instead of weights from each
@@ -77,102 +74,78 @@ class Evaluator_Orchestrator(Orchestrator):
         int
             Returns 0 on the successful completion of the training.
             """
-        
-        # Initializing all the attributes using an instance of the Settings object.
-        iterations = self.settings.iterations # Int, number of iterations
-        nodes_number = self.settings.number_of_nodes # Int, number of nodes
-        nodes = [node for node in range(nodes_number)] # List of ints, list of nodes ids
-        sample_size = self.settings.sample_size # Int, size of the sample
-        # Initialization of the generator object    
-        self.Generator = np.random.default_rng(self.settings.seed)
-        # Initializing an instance of the Optimizer class object.
+        # OPTIMIZER CLASS OBJECT
         optimizer_settings = self.settings.optimizer_settings # Dict containing instructions for the optimizer, dict.
         self.Optimizer = Optimizers(weights = self.central_model.get_weights(),
                                     settings=optimizer_settings)
-        # Initializing an instance of the Archiver class if enabled in the settings.
-        if self.settings.enable_archiver == True:
-            Archive_manager = Archive_Manager(archive_manager = self.settings.archiver_settings,
-                logger = self.orchestrator_logger)
-        # Creating (empty) federated nodes.
-        nodes_green = create_nodes(nodes, 
-                                   self.settings.nodes_settings)
-         # Creating a list of models for the nodes.
-        model_list = self.model_initialization(nodes_number=nodes_number,
-                                               model=self.central_net)
-        # Initializing nodes -> loading the data and models onto empty nodes.
-        nodes_green = self.nodes_initialization(nodes_list=nodes_green,
-                                                model_list=model_list,
-                                                data_list=nodes_data)
-        
-        # Initializing the Evaluation Manager
+        # EVALUATION MANAGER: INITIALIZAITON
         if self.parallelization:
             Evaluation_manager = Parallel_Manager(settings = self.settings.evaluator_settings,
                                                   model_template = copy.deepcopy(self.central_model),
                                                   optimizer_template = copy.deepcopy(self.Optimizer),
-                                                  nodes = nodes,
-                                                  iterations = iterations)
+                                                  nodes = self.nodes,
+                                                  iterations = self.iterations)
         else:
             Evaluation_manager = Evaluation_Manager(settings = self.settings.evaluator_settings,
                                                  model_template = copy.deepcopy(self.central_model),
                                                  optimizer_template = copy.deepcopy(self.Optimizer),
-                                                 nodes = nodes,
-                                                 iterations = iterations)
+                                                 nodes = self.nodes,
+                                                 iterations = self.iterations)
         
-        for iteration in range(iterations):
+        # TRAINING PHASE ----- FEDOPT WITH EVALUATOR
+        # FEDOPT - CREATE POOL OF WORKERS
+        for iteration in range(self.iterations):
             self.orchestrator_logger.info(f"Iteration {iteration}")
             gradients = {}
-            # Evaluation step: preserving the last version of the model and optimizer
+            # EVALUATION MANAGER: preserving the last version of the model and optimizer
             Evaluation_manager.preserve_previous_model(previous_model = copy.deepcopy(self.central_model.get_weights()))
             Evaluation_manager.preserve_previous_optimizer(previous_optimizer = copy.deepcopy(self.Optimizer.get_weights()))
-            
             # Sampling nodes and asynchronously apply the function
-            sampled_nodes = sample_nodes(nodes_green, 
-                                         sample_size=sample_size,
+            sampled_nodes = sample_nodes(self.nodes_green, 
+                                         sample_size=self.sample_size,
                                          generator=self.Generator) # SAMPLING FUNCTION -> CHANGE IF NEEDED
+            # FEDAVG - TRAINING PHASE
+            # OPTION: BATCH TRAINING
             if self.batch_job:
                 for batch in Helpers.chunker(sampled_nodes, size=self.batch):
-                    with Pool(sample_size) as pool:
+                    with Pool(self.sample_size) as pool:
                         results = [pool.apply_async(train_nodes, (node, 'gradients')) for node in batch]
                         # consume the results
                         for result in results:
                             node_id, model_gradients = result.get()
                             gradients[node_id] = copy.deepcopy(model_gradients)
+            # OPTION: NON-BATCH TRAINING
             else:
-                with Pool(sample_size) as pool:
+                with Pool(self.sample_size) as pool:
                     results = [pool.apply_async(train_nodes, (node, 'gradients')) for node in sampled_nodes]
-                    # consume the results
                     for result in results:
                         node_id, model_gradients = result.get()
                         gradients[node_id] = copy.deepcopy(model_gradients)
-            
+            # EVALUATOR: MAKE COPIES OF THE GRADIENTS
             grad_copy = copy.deepcopy(gradients) #TODO Copy for the evaluation, since Agg.compute_average changes the weights
-            # Computing the average
+            # FEDOPT: AGGREGATING FUNCTION
             grad_avg = Aggregators.compute_average(gradients) # AGGREGATING FUNCTION -> CHANGE IF NEEDED
-            # Upadting the weights using gradients and momentum
             updated_weights = self.Optimizer.fed_optimize(weights=self.central_model.get_weights(),
                                                           delta=grad_avg)
-            # Updating the orchestrator
+            # FEDOPT: UPDATING THE CENTRAL MODEL 
             self.central_model.update_weights(updated_weights)
-            
-            # Evaluation step: preserving the updated central model
-            Evaluation_manager.preserve_updated_model(updated_model = copy.deepcopy(self.central_model.get_weights()))
-            # Evaluation step: calculating all the marginal contributions
+            # EVALUATOR: PRESERVE UPDATED MODEL
+            Evaluation_manager.preserve_updated_model(
+                updated_model = copy.deepcopy(self.central_model.get_weights()))
+            # EVALUATOR: TRACK RESULTS
             Evaluation_manager.track_results(gradients = grad_copy,
                                              nodes_in_sample = sampled_nodes,
                                              iteration = iteration)
-            # Updating the nodes
-            for node in nodes_green:
+            # FEDOPT: UPDATING THE NODES
+            for node in self.nodes_green:
                 node.model.update_weights(updated_weights)         
                    
-            # Passing results to the archiver -> only if so enabled in the settings.
-            if self.settings.enable_archiver == True:
-                Archive_manager.archive_training_results(iteration = iteration,
-                                                        central_model=self.central_model,
-                                                        nodes=nodes_green)
-            #torch.cuda.empty_cache()
-            print("DEBUG CONFIRMED")
-        # Evaluation step: Calling evaluation manager to preserve all steps
-        results = Evaluation_manager.finalize_tracking(path = Archive_manager.metrics_savepath)
-        print(results)
+            # ARCHIVER: PRESERVING RESULTS
+            if self.enable_archiver == True:
+                self.archive_manager.archive_training_results(iteration = iteration,
+                                                              central_model=self.central_model,
+                                                              nodes=self.nodes_green)
+        # EVALUATOR: PRESERVE RESULTS
+        results = Evaluation_manager.finalize_tracking(path = self.archive_manager.metrics_savepath)
         self.orchestrator_logger.critical("Training complete")
         return 0

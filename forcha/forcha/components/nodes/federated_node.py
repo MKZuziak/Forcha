@@ -1,6 +1,6 @@
 from typing import Any
 from datasets import arrow_dataset
-from forcha.models.pytorch.federated_model import FederatedModel
+from forcha.models.federated_model import FederatedModel
 from forcha.utils.loggers import Loggers
 
 node_logger = Loggers.node_logger()

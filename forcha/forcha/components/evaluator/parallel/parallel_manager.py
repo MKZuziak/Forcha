@@ -1,5 +1,5 @@
 from forcha.components.evaluator.evaluation_manager import Evaluation_Manager
-from forcha.models.pytorch.federated_model import FederatedModel
+from forcha.models.federated_model import FederatedModel
 from forcha.exceptions.evaluatorexception import Sample_Evaluator_Init_Exception
 from forcha.components.evaluator.parallel.parallel_lsaa import Parallel_LSAA
 from forcha.components.evaluator.parallel.parallel_psi import Parallel_PSI

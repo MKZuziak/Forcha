@@ -1,5 +1,5 @@
 from forcha.exceptions.settingexception import ArchiverSettingsException
-from forcha.models.pytorch.federated_model import FederatedModel
+from forcha.models.federated_model import FederatedModel
 from forcha.utils.handlers import Handler
 from forcha.components.nodes.federated_node import FederatedNode
 import os
