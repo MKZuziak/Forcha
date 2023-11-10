@@ -4,8 +4,8 @@ according to predefined schema. During the training, three contribution metrics 
 
 import pickle
 import os
-from forcha.components.orchestrator.generic_orchestrator import Orchestrator
-from forcha.templates.generate_template import basic_fedavg
+from forcha.components.orchestrator.fedopt_orchestrator import Fedopt_Orchestrator
+from forcha.templates.generate_template import basic_fedopt
 from forcha.components.settings.init_settings import init_settings
 from forcha.models.templates.mnist import MNIST_Expanded_CNN
 
@@ -13,16 +13,17 @@ from forcha.models.templates.mnist import MNIST_Expanded_CNN
 
 def simulation():
     cwd = os.getcwd()
-    config = basic_fedavg(iterations=50,
+    config = basic_fedopt(iterations=50,
                           number_of_nodes=20,
                           sample_size=10,
                           root_path=cwd,
-                          local_lr=0.01,
+                          local_lr=0.1,
                           local_epochs=2,
-                          batch_size=32)
+                          batch_size=32,
+                          central_lr=0.25)
     
     settings = init_settings(
-         orchestrator_type='general',
+         orchestrator_type='fedopt',
          initialization_method='dict',
          dict_settings = config,
          allow_default=True)
@@ -34,7 +35,7 @@ def simulation():
     # DATA: Selecting data for nodes
     nodes_data = data[1]
     model = MNIST_Expanded_CNN()
-    orchestrator = Orchestrator(settings, full_debug = True)
+    orchestrator = Fedopt_Orchestrator(settings=settings, full_debug=True)
     
     orchestrator.prepare_orchestrator(
          model=model, 
