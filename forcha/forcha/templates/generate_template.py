@@ -18,8 +18,8 @@ def basic_fedavg(iterations: int,
                 "central_on_local": True,
                 "log_results": True,
                 "save_results": True,
-                "save_orchestrator_model": False,
-                "save_nodes_model": True,
+                "save_orchestrator_model": True,
+                "save_nodes_model": False,
                 "form_archive": True
                 }},
         "nodes":{
