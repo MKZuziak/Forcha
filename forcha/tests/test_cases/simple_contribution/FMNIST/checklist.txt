@@ -1,0 +1,9 @@
+Simple FedAvg version 0.1.4.7
+
+1. FMNIST:
+--- Training completes successfully
+--- Model learns successfully
+--- Loaded model is valid on the external test syst
+--- No memory leaks
+--- All the logs are saved correctly
+TEST PASSED

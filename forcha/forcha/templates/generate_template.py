@@ -67,7 +67,7 @@ def basic_fedopt(iterations: int,
                 "learning_rate": local_lr,
                 "FORCE_CPU": False}}}
 
-def basic_fedopt(iterations: int,
+def basic_evaluator(iterations: int,
                     number_of_nodes: int,
                     sample_size: int,
                     root_path: str,

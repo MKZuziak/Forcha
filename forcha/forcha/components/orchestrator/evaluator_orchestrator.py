@@ -103,7 +103,7 @@ class Evaluator_Orchestrator(Orchestrator):
             # Sampling nodes and asynchronously apply the function
             sampled_nodes = sample_nodes(self.nodes_green, 
                                          sample_size=self.sample_size,
-                                         generator=self.Generator) # SAMPLING FUNCTION -> CHANGE IF NEEDED
+                                         generator=self.generator) # SAMPLING FUNCTION -> CHANGE IF NEEDED
             # FEDAVG - TRAINING PHASE
             # OPTION: BATCH TRAINING
             if self.batch_job:
