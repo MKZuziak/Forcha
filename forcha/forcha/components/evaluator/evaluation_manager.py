@@ -1,6 +1,5 @@
 from forcha.components.evaluator.or_evaluator import OR_Evaluator
-from forcha.components.evaluator.lsaa_evaluator import LSAA
-from forcha.components.evaluator.exlsaa_evaluator import EXLSAA
+from forcha.components.evaluator.alpha_evaluator import Alpha_Amplified
 from forcha.components.evaluator.sample_evaluator import Sample_Evaluator
 from forcha.components.evaluator.sample_evaluator import Sample_Shapley_Evaluator
 from forcha.models.federated_model import FederatedModel
@@ -108,18 +107,12 @@ class Evaluation_Manager():
             self.compiled_flags.append('in_sample_shap')
         else:
             self.flag_samplesh_evaluator = False
-        # Flag: LSAA
-        if settings.get("LSAA"):
-            self.flag_lsaa_evaluator = True
-            self.compiled_flags.append('LSAA')
+        # Flag: Alpha-Amplification
+        if settings.get("ALPHA"):
+            self.flag_alpha_evaluator = True
+            self.compiled_flags.append('ALPHA')
         else:
-            self.flag_lsaa_evaluator = False
-        # Flag: Extended LSAA
-        if settings.get("EXTENDED_LSAA"):
-            self.flag_exlsaa_evaluator = True
-            self.compiled_flags.append('EXLSAA')
-        else:
-            self.flag_exlsaa_evaluator = False
+            self.flag_alpha_evaluator = False
         
         # Sets up a flag for each available method of score preservation
         # Flag: Preservation of partial results (for In-Sample Methods)
@@ -148,17 +141,9 @@ class Evaluation_Manager():
                 self.samplesh_evaluator = Sample_Shapley_Evaluator(nodes = nodes, iterations=iterations)
             except NameError as e:
                 raise Sample_Evaluator_Init_Exception # TODO
-        if self.flag_lsaa_evaluator == True:
+        if self.flag_alpha_evaluator == True:
             try:
-                self.lsaa_evaluator = LSAA(nodes = nodes, iterations = iterations)
-                self.search_length = settings['line_search_length']
-            except NameError as e:
-                raise #TODO: Custom error
-            except KeyError as k:
-                raise #TODO: Lacking configuration error
-        if self.flag_exlsaa_evaluator == True:
-            try:
-                self.exlsaa_evaluator = EXLSAA(nodes=nodes, iterations=iterations)
+                self.alpha_evaluator = Alpha_Amplified(nodes = nodes, iterations = iterations)
                 self.search_length = settings['line_search_length']
             except NameError as e:
                 raise #TODO: Custom error
@@ -205,10 +190,8 @@ class Evaluation_Manager():
         """
         if name == "LOO":
             self.default_method = self.or_evaluator
-        elif name == "LSAA":
-            self.default_method = self.lsaa_evaluator
-        elif name == "EXLSAA":
-            self.default_method = self.exlsaa_evaluator
+        elif name == "ALPHA":
+            self.default_method = self.alpha_evaluator
         else:
             raise NameError # TODO: Add custom error.
     
@@ -328,13 +311,13 @@ class Evaluation_Manager():
                     if iteration  == 0:
                         save_coalitions(values=debug_values,
                                         path=self.full_debug_path,
-                                        name='col_values_psi_debug.csv',
+                                        name='col_values_loo_debug.csv',
                                         iteration=iteration,
                                         mode=0)
                     else:
                         save_coalitions(values=debug_values,
                                         path=self.full_debug_path,
-                                        name='col_values_psi_debug.csv',
+                                        name='col_values_loo_debug.csv',
                                         iteration=iteration,
                                         mode=1)
 
@@ -364,58 +347,31 @@ class Evaluation_Manager():
         #                                 mode=1)
     
         #LSAA Method
-        if self.flag_lsaa_evaluator:
-            if iteration in self.scheduler['LSAA']: # Checks scheduler
-                debug_values = self.lsaa_evaluator.update_lsaa(
+        if self.flag_alpha_evaluator:
+            if iteration in self.scheduler['ALPHA']: # Checks scheduler
+                debug_values = self.alpha_evaluator.update_alpha(
                     model_template = self.model_template,
                     optimizer_template = self.optimizer_template,
                     gradients = gradients,
                     nodes_in_sample = nodes_in_sample,
                     iteration = iteration,
                     search_length = self.search_length,
-                    optimizer = self.previous_optimizer,
-                    previous_model=self.previous_c_model)
+                    optimizer = copy.deepcopy(self.previous_optimizer),
+                    final_model = copy.deepcopy(self.updated_c_model),
+                    previous_model = copy.deepcopy(self.previous_c_model))
             
                             # Preserving debug values (if enabled)
                 if self.full_debug:
                     if iteration  == 0:
                         save_coalitions(values=debug_values,
                                         path=self.full_debug_path,
-                                        name='col_values_lsaa_debug.csv',
+                                        name='col_values_alpha_debug.csv',
                                         iteration=iteration,
                                         mode=0)
                     else:
                         save_coalitions(values=debug_values,
                                         path=self.full_debug_path,
-                                        name='col_values_lsaa_debug.csv',
-                                        iteration=iteration,
-                                        mode=1)
-
-        #EXLSAA Method
-        if self.flag_exlsaa_evaluator:
-            if iteration in self.scheduler['EXLSAA']: # Checks scheduler
-                debug_values = self.exlsaa_evaluator.update_lsaa(
-                    model_template = self.model_template,
-                    optimizer_template = self.optimizer_template,
-                    gradients = gradients,
-                    nodes_in_sample = nodes_in_sample,
-                    iteration = iteration,
-                    search_length = self.search_length,
-                    optimizer = self.previous_optimizer,
-                    previous_model=self.previous_c_model)
-            
-        # Preserving debug values (if enabled)
-                if self.full_debug:
-                    if iteration  == 0:
-                        save_coalitions(values=debug_values,
-                                        path=self.full_debug_path,
-                                        name='col_values_exlsaa_debug.csv',
-                                        iteration=iteration,
-                                        mode=0)
-                    else:
-                        save_coalitions(values=debug_values,
-                                        path=self.full_debug_path,
-                                        name='col_values_exlsaa_debug.csv',
+                                        name='col_values_alpha_debug.csv',
                                         iteration=iteration,
                                         mode=1)
 
@@ -447,24 +403,19 @@ class Evaluation_Manager():
         
         if self.flag_sample_evaluator:
             partial_psi, psi = self.sample_evaluator.calculate_final_psi()
-            results['partial']['partial_psi_debug'] = partial_psi
-            results['full']['psi_debug'] = psi
+            results['partial']['partial_loo'] = partial_psi
+            results['full']['loo'] = psi
         
         if self.flag_samplesh_evaluator:
             partial_shap, shap = self.samplesh_evaluator.calculate_final_shap()
-            results['partial']['partial_shap_debug'] = partial_shap
-            results['full']['shap_debug'] = shap
+            results['partial']['partial_shap'] = partial_shap
+            results['full']['shap'] = shap
         
-        if self.flag_lsaa_evaluator:
-            partial_lsaa, lsaa = self.lsaa_evaluator.calculate_final_lsaa()
-            results['partial']['partial_lsaa_debug'] = partial_lsaa
-            results['full']['lsaa_debug'] = lsaa
-        
-        if self.flag_exlsaa_evaluator:
-            partial_exlsaa, exlsaa = self.exlsaa_evaluator.calculate_final_lsaa()
-            results['partial']['partial_exlsaa_debug'] = partial_exlsaa
-            results['full']['exlsaa_debug'] = exlsaa
-        
+        if self.flag_alpha_evaluator:
+            partial_alpha, alpha = self.alpha_evaluator.calculate_final_alpha()
+            results['partial']['partial_alpha'] = partial_alpha
+            results['full']['alpha'] = alpha
+                
         if self.preserve_partial_results == True:
             for metric, values in results['partial'].items():
                 s_path = os.path.join(path, (str(metric) + '.csv'))

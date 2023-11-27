@@ -6,18 +6,18 @@ from forcha.utils.computations import Aggregators
 from collections import OrderedDict
 
 
-class LSAA():
-    """LSAA is used to establish the marginal contribution of each sampled
-    client to the general value of the global model. LSAA is based on the assumption
+class Alpha_Amplified():
+    """Alpha-amplification is used to establish the marginal contribution of each sampled
+    client to the general value of the global model. Amplification is based on the assumption
     that we can detect the influence that a sampled client has on a general model
     by testing a scenario in which we have more-alike clients included in the sample."""
     
     def __init__(self,
                  nodes: list,
                  iterations: int) -> None:
-        """Constructor for the LSAA. Initializes empty
-        hash tables for LSAA value for each iteration as well as hash table
-        for final LSAA values.
+        """Constructor for the Alpha-Amplification. Initializes empty
+        hash tables for Amplification value for each iteration as well as hash table
+        for final values.
         
         Parameters
         ----------
@@ -30,11 +30,11 @@ class LSAA():
         None
         """
         
-        self.lsaa = {node: np.float64(0) for node in nodes} # Hash map containing all the nodes and their respective marginal contribution values.
-        self.partial_lsaa = {round:{node: np.float64(0) for node in nodes} for round in range(iterations)} # Hash map containing all the partial psi for each sampled subset.
+        self.alpha = {node: np.float64(0) for node in nodes} # Hash map containing all the nodes and their respective marginal contribution values.
+        self.partial_alpha = {round:{node: np.float64(0) for node in nodes} for round in range(iterations)} # Hash map containing all the partial psi for each sampled subset.
     
 
-    def update_lsaa(self,
+    def update_alpha(self,
                     model_template: FederatedModel,
                     optimizer_template: Optimizers,
                     gradients: OrderedDict,
@@ -43,12 +43,13 @@ class LSAA():
                     search_length: int,
                     iteration: int,
                     previous_model: OrderedDict,
+                    final_model: OrderedDict,
                     return_coalitions: bool = True):
         """Method used to track_results after each training round.
         Given the graidnets, ids of the nodes included in sample,
         last version of the optimizer, previous version of the model
         and the updated version of the model, it calculates values of
-        all the marginal contributions using LSAA.
+        all the marginal contributions using alpha-amplification.
         
         Parameters
         ----------
@@ -59,7 +60,7 @@ class LSAA():
         optimizer: Optimizers
             An instance of the forcha.Optimizers class.
         search length: int,
-            A number of replicas that should be included in LSA search.
+            A number of replicas that should be included in search.
         iteration: int
             The current iteration.
         previous_model: FederatedModel
@@ -72,44 +73,32 @@ class LSAA():
         """
         
         recorded_values = {}
-
+        
+        model_template.update_weights(final_model)
+        final_model_score = model_template.evaluate_model()[1]
+        recorded_values[tuple(gradients.keys())] = final_model_score
+        
         for node in nodes_in_sample:
-            # Baseline case
+            node_id = node.node_id
+            gradients_copy = copy.deepcopy(gradients)
+            del gradients_copy[node_id]   
             optimizer_template.set_weights(previous_delta=copy.deepcopy(optimizer[0]),
                                            previous_momentum=copy.deepcopy(optimizer[1]),
                                            learning_rate=copy.deepcopy(optimizer[2]))
-            copy_gradients = copy.deepcopy(gradients)
-            del copy_gradients[node.node_id]
-            grad_avg = Aggregators.compute_average(copy_gradients)
-            updated_weights = optimizer_template.fed_optimize(
-                weights=copy.deepcopy(previous_model),
-                delta=grad_avg)
-            model_template.update_weights(updated_weights)
-            baseline_score = model_template.evaluate_model()[1]
-            recorded_values[tuple(copy_gradients.keys())] = baseline_score
-            
-            
-            # Appended case
-            optimizer_template.set_weights(previous_delta=copy.deepcopy(optimizer[0]),
-                                           previous_momentum=copy.deepcopy(optimizer[1]),
-                                           learning_rate=copy.deepcopy(optimizer[2]))
-            copy_gradients = copy.deepcopy(gradients)
-            del copy_gradients[node.node_id]
             
             for phi in range(search_length):
-                copy_gradients[(f"{phi + 1}_of_{node.node_id}")] = copy.deepcopy(gradients[node.node_id])
+                gradients_copy[(f"{phi + 1}_of_{node.node_id}")] = copy.deepcopy(gradients[node.node_id])
             
-            grad_avg = Aggregators.compute_average(copy_gradients)
-            updated_weights = optimizer_template.fed_optimize(
+            grad_avg = Aggregators.compute_average(gradients_copy)
+            weights = optimizer_template.fed_optimize(
                 weights=copy.deepcopy(previous_model),
                 delta=grad_avg)
-            model_template.update_weights(updated_weights)
+            model_template.update_weights(weights)
             appended_score = model_template.evaluate_model()[1]
-            recorded_values[tuple(copy_gradients.keys())] = appended_score 
             
-            lsaa_score = appended_score - baseline_score
-            self.partial_lsaa[iteration][node.node_id] = lsaa_score
-            print(f"Evaluated LSAA of client {node.node_id}") #TODO
+            self.partial_alpha[iteration][node_id] = final_model_score - appended_score
+            recorded_values[tuple(gradients_copy.keys())] = appended_score 
+            print(f"Evaluated alpha-amplication score of client {node_id}")
        
         if return_coalitions == True:
             return recorded_values
@@ -126,11 +115,11 @@ class LSAA():
         -------
         tuple[dict[int: dict], dict[int: float]]
         """
-        values = self.partial_lsaa[iteration]
+        values = self.partial_alpha[iteration]
         return values
         
     
-    def calculate_final_lsaa(self) -> tuple[dict[int: dict], dict[int: float]]:
+    def calculate_final_alpha(self) -> tuple[dict[int: dict], dict[int: float]]:
         """Method used to sum up all the partial LOO scores to obtain
         a final LOO score for each client.
         
@@ -143,8 +132,8 @@ class LSAA():
         tuple[dict[int: dict], dict[int: float]]
         """
         
-        for iteration_results in self.partial_lsaa.values():
+        for iteration_results in self.partial_alpha.values():
             for node, value in iteration_results.items():
-                self.lsaa[node] += np.float64(value)
-        return (self.partial_lsaa, self.lsaa)
+                self.alpha[node] += np.float64(value)
+        return (self.partial_alpha, self.alpha)
 

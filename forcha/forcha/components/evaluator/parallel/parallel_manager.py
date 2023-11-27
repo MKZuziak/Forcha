@@ -1,9 +1,8 @@
 from forcha.components.evaluator.evaluation_manager import Evaluation_Manager
 from forcha.models.federated_model import FederatedModel
 from forcha.exceptions.evaluatorexception import Sample_Evaluator_Init_Exception
-from forcha.components.evaluator.parallel.parallel_lsaa import Parallel_LSAA
+from forcha.components.evaluator.parallel.parallel_alpha import Parallel_Alpha
 from forcha.components.evaluator.parallel.parallel_psi import Parallel_PSI
-from forcha.components.evaluator.parallel.parallel_exlsaa import Parallel_EXLSAA
 from collections import OrderedDict
 from forcha.utils.csv_handlers import save_coalitions
 import os
@@ -27,16 +26,11 @@ class Parallel_Manager(Evaluation_Manager):
         else:
             self.flag_sample_evaluator = False
         # Flag: LSAA
-        if settings.get("LSAA"):
-            self.flag_lsaa_evaluator = True
-            self.compiled_flags.append('LSAA')
+        if settings.get("ALPHA"):
+            self.flag_alpha_evaluator = True
+            self.compiled_flags.append('ALPHA')
         else:
-            self.flag_lsaa_evaluator = False
-        if settings.get("EXLSAA"):
-            self.flag_exlsaa_evaluator = True
-            self.compiled_flags.append("EXLSAA")
-        else:
-            self.flag_exlsaa_evaluator = True
+            self.flag_alpha_evaluator = False
         
         # Sets up a flag for each available method of score preservation
         # Flag: Preservation of partial results (for In-Sample Methods)
@@ -55,24 +49,15 @@ class Parallel_Manager(Evaluation_Manager):
             except NameError as e:
                 raise Sample_Evaluator_Init_Exception # TODO
             
-        if self.flag_lsaa_evaluator == True:
+        if self.flag_alpha_evaluator == True:
             try:
-                self.lsaa_evaluator = Parallel_LSAA(nodes = nodes, iterations = iterations)
+                self.alpha_evaluator = Parallel_Alpha(nodes = nodes, iterations = iterations)
                 self.search_length = settings['line_search_length']
             except NameError as e:
                 raise #TODO: Custom error
             except KeyError as k:
                 raise #TODO: Lacking configuration error
         
-        if self.flag_exlsaa_evaluator == True:
-            try:
-                self.lsaa_evaluator = Parallel_EXLSAA(nodes = nodes, iterations = iterations)
-                self.search_length = settings['line_search_length']
-            except NameError as e:
-                raise #TODO: Custom error
-            except KeyError as k:
-                raise #TODO: Lacking configuration error
-    
         self.flag_shap_or = False
         self.flag_loo_or = False
         self.flag_samplesh_evaluator = False
@@ -100,47 +85,27 @@ class Parallel_Manager(Evaluation_Manager):
         None
         """
         #LSAA Method
-        if self.flag_lsaa_evaluator:
-            if iteration in self.scheduler['LSAA']: # Checks scheduler
-                debug_values = self.lsaa_evaluator.update_lsaa(gradients = gradients,
-                                    nodes_in_sample = nodes_in_sample,
-                                    iteration = iteration,
-                                    search_length = self.search_length,
-                                    optimizer = self.previous_optimizer,
-                                    previous_model = self.previous_c_model)# Preserving debug values (if enabled)
+        if self.flag_alpha_evaluator:
+            if iteration in self.scheduler['ALPHA']: # Checks scheduler
+                debug_values = self.alpha_evaluator.update_alpha(
+                    gradients = gradients,
+                    nodes_in_sample = nodes_in_sample,
+                    iteration = iteration,
+                    search_length = self.search_length,
+                    optimizer = self.previous_optimizer,
+                    previous_model = self.previous_c_model,
+                    final_model = self.updated_c_model) # Preserving debug values (if enabled)
                 if self.full_debug:
                     if iteration  == 0:
                         save_coalitions(values=debug_values,
                                         path=self.full_debug_path,
-                                        name='col_values_lsaa.csv',
+                                        name='col_values_alpha.csv',
                                         iteration=iteration,
                                         mode=0)
                     else:
                         save_coalitions(values=debug_values,
                                         path=self.full_debug_path,
-                                        name='col_values_lsaa.csv',
-                                        iteration=iteration,
-                                        mode=1)
-        #EXLSAA Method
-        if self.flag_exlsaa_evaluator:
-            if iteration in self.scheduler['EXLSAA']: # Checks scheduler
-                debug_values = self.exlsaa_evaluator.update_lsaa(gradients = gradients,
-                                    nodes_in_sample = nodes_in_sample,
-                                    iteration = iteration,
-                                    search_length = self.search_length,
-                                    optimizer = self.previous_optimizer,
-                                    previous_model = self.previous_c_model)# Preserving debug values (if enabled)
-                if self.full_debug:
-                    if iteration  == 0:
-                        save_coalitions(values=debug_values,
-                                        path=self.full_debug_path,
-                                        name='col_values_exlsaa.csv',
-                                        iteration=iteration,
-                                        mode=0)
-                    else:
-                        save_coalitions(values=debug_values,
-                                        path=self.full_debug_path,
-                                        name='col_values_exlsaa.csv',
+                                        name='col_values_alpha.csv',
                                         iteration=iteration,
                                         mode=1)
         #PSI Method
@@ -156,12 +121,12 @@ class Parallel_Manager(Evaluation_Manager):
                     if iteration  == 0:
                         save_coalitions(values=debug_values,
                                         path=self.full_debug_path,
-                                        name='col_values_psi.csv',
+                                        name='col_values_loo.csv',
                                         iteration=iteration,
                                         mode=0)
                     else:
                         save_coalitions(values=debug_values,
                                         path=self.full_debug_path,
-                                        name='col_values_psi.csv',
+                                        name='col_values_loo.csv',
                                         iteration=iteration,
                                         mode=1)

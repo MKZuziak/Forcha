@@ -76,8 +76,7 @@ def basic_evaluator(iterations: int,
                     local_epochs: int = 2,
                     batch_size: int = 32,
                     LOO: bool = True,
-                    LSAA: bool = True,
-                    EXLSAA: bool = False,
+                    ALPHA: bool = True,
                     search_length: int = 1):
     return {
         "orchestrator": {
@@ -100,12 +99,12 @@ def basic_evaluator(iterations: int,
                 "name": "Simple",
                 "learning_rate": central_lr},
             "evaluator" : {
-            "LOO_OR": False,
-            "Shapley_OR": False,
+            # "LOO_OR": False,
+            # "Shapley_OR": False,
             "IN_SAMPLE_LOO": LOO,
-            "IN_SAMPLE_SHAP": False,
-            "LSAA": LSAA,
-            "EXTENDED_LSAA": EXLSAA,
+            # "IN_SAMPLE_SHAP": False,
+            "ALPHA": ALPHA,
+            # "EXTENDED_LSAA": EXLSAA,
             "line_search_length": search_length,
             "preserve_evaluation": {
                 "preserve_partial_results": True,

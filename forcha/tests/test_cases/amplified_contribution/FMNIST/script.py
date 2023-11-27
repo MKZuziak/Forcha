@@ -13,15 +13,14 @@ from forcha.models.templates.mnist import MNIST_Expanded_CNN
 
 def simulation():
     cwd = os.getcwd()
-    config = basic_evaluator(iterations=50,
+    config = basic_evaluator(iterations=11,
                           number_of_nodes=20,
                           sample_size=10,
                           root_path=cwd,
                           local_lr=0.01,
                           local_epochs=2,
                           batch_size=32,
-                          search_length=4,
-                          EXLSAA=True)
+                          search_length=2)
     
     settings = init_settings(
          orchestrator_type='evaluator',
