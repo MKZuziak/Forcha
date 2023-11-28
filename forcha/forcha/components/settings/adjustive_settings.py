@@ -10,14 +10,14 @@ class Adjustive_Settings(Evaluator_Settings):
                  **kwargs) -> None:
         """Initialization of an instance of the Adjustive_orchestrator Settings object. Requires choosing the 
         initialization method.Can be initialized either from a dictionary containing all the relevant key-words or from the 
-        **kwargs. It is highly advised that the Settings object should be initialized from the dicitonary.
+        manual launch. It is highly advised that the Settings object should be initialized from the dicitonary.
         It inherits all the properties and attributes from the Parent class adding additionally the Evaluator object.
         Parameters
         ----------
         allow_default: bool
             A logical switch to allow using default values in absence of passed values.
         initialization_method: str, default to 'dict' 
-            The method of initialization. Either 'dict' or 'kwargs'.
+            The method of initialization. Either 'dict' or 'manual'.
         dict_settings: dict, default to None
             A dictionary containing all the relevant settings if the initialization is made from dir. 
             Default to None
@@ -30,8 +30,12 @@ class Adjustive_Settings(Evaluator_Settings):
                          **kwargs)
         if initialization_method == 'dict':
             self.init_adjustive_properties(dict_settings=self.orchestrator_settings)
-        else: # Initialization from **kwargs
-            self.init_evaluator_from_kwargs(kwargs)
+        elif initialization_method == 'manual':
+            # TODO: Not finished yet!
+            raise NotImplemented()
+        else:
+            raise SettingsObjectException('Initialization method is not supported. '\
+                                          'Supported methods: dict, manual')
     
     
     def init_adjustive_properties(self,

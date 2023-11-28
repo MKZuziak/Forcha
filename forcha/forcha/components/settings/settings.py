@@ -10,13 +10,13 @@ class Settings():
                  **kwargs) -> None:
         """Initialization of an instance of the Settings object. Requires choosing the initialization method.
         Can be initialized either from a dictionary containing all the relevant key-words or from the 
-        **kwargs. It is highly advised that the Settings object should be initialized from the dicitonary.
+        manual launch. It is highly advised that the Settings object should be initialized from the dicitonary.
         Parameters
         ----------
         allow_default: bool
             A logical switch to allow using default values in absence of passed values.
         initialization_method: str, default to 'dict' 
-            The method of initialization. Either 'dict' or 'kwargs'.
+            The method of initialization. Either 'dict' or 'manual'.
         dict_settings: dict, default to None
             A dictionary containing all the relevant settings if the initialization is made from dir. 
             Default to None
@@ -28,14 +28,12 @@ class Settings():
             self.init_from_dict(dict_settings=dict_settings)
             if self.enable_archiver:
                 self.init_archiver_from_dict(dict_settings=self.orchestrator_settings)
-        elif initialization_method == 'kwargs':
+        elif initialization_method == 'manual':
             # TODO: Not finished yet!
-            self.init_from_dict(kwargs)
-            if self.enable_archiver:
-                self.init_archiver_from_dict(dict_settings=kwargs)
+            raise NotImplemented()
         else:
             raise SettingsObjectException('Initialization method is not supported. '\
-                                          'Supported methods: dict, kwargs')
+                                          'Supported methods: dict, manual')
     
 
     def init_from_dict(self,

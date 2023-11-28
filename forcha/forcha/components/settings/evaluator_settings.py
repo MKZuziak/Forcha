@@ -9,14 +9,14 @@ class Evaluator_Settings(FedoptSettings):
                  **kwargs) -> None:
         """Initialization of an instance of the Evaluator object. Requires choosing the initialization method.
         Can be initialized either from a dictionary containing all the relevant key-words or from the 
-        **kwargs. It is highly advised that the Settings object should be initialized from the dicitonary.
+        manual launch. It is highly advised that the Settings object should be initialized from the dicitonary.
         It inherits all the properties and attributes from the Parent class adding additionally the Evaluator object.
         Parameters
         ----------
         allow_default: bool
             A logical switch to allow using default values in absence of passed values.
         initialization_method: str, default to 'dict' 
-            The method of initialization. Either 'dict' or 'kwargs'.
+            The method of initialization. Either 'dict' or 'manual'.
         dict_settings: dict, default to None
             A dictionary containing all the relevant settings if the initialization is made from dir. 
             Default to None
@@ -29,8 +29,12 @@ class Evaluator_Settings(FedoptSettings):
                          **kwargs)
         if initialization_method == 'dict':
             self.init_evaluator_from_dict(dict_settings=self.orchestrator_settings)
-        else: # Initialization from **kwargs
-            self.init_evaluator_from_kwargs(kwargs)
+        elif initialization_method == 'manual':
+            # TODO: Not finished yet!
+            raise NotImplemented()
+        else:
+            raise SettingsObjectException('Initialization method is not supported. '\
+                                          'Supported methods: dict, manual')
     
 
     def init_evaluator_from_dict(self,
@@ -56,29 +60,29 @@ class Evaluator_Settings(FedoptSettings):
                                                 "set the allow_default flag to True or disable the evaluator.")
         
         # Sanity check for the evaluator        
-        try:
-            self.evaluator_settings["LOO_OR"]
-        except KeyError:
-            if self.allow_defualt:
-                self.evaluator_settings["LOO_OR"] = False
-                print("WARNING! Leave-one-out One-Round was disabled by default.")
-            else:
-                raise SettingsObjectException("Evaluator object is missing the key properties!")
+        # try:
+        #     self.evaluator_settings["LOO_OR"]
+        # except KeyError:
+        #     if self.allow_defualt:
+        #         self.evaluator_settings["LOO_OR"] = False
+        #         print("WARNING! Leave-one-out One-Round was disabled by default.")
+        #     else:
+        #         raise SettingsObjectException("Evaluator object is missing the key properties!")
         
-        try:
-            self.evaluator_settings["Shapley_OR"]
-        except KeyError:
-            if self.allow_defualt:
-                self.evaluator_settings["Shapley_OR"] = False
-                print("WARNING! Shapley One-Round was disabled by default.")
-            else:
-                raise SettingsObjectException("Evaluator object is missing the key properties!")
+        # try:
+        #     self.evaluator_settings["Shapley_OR"]
+        # except KeyError:
+        #     if self.allow_defualt:
+        #         self.evaluator_settings["Shapley_OR"] = False
+        #         print("WARNING! Shapley One-Round was disabled by default.")
+        #     else:
+        #         raise SettingsObjectException("Evaluator object is missing the key properties!")
         
         try:
             self.evaluator_settings["IN_SAMPLE_LOO"]
         except KeyError:
             if self.allow_defualt:
-                self.evaluator_settings["IN_SAMPLE_LOO"] = False
+                self.evaluator_settings["IN_SAMPLE_LOO"] = True
                 print("WARNING! In-sample Shapley was disabled by default.")
             else:
                 raise SettingsObjectException("Evaluator object is missing the key properties!")
@@ -93,28 +97,28 @@ class Evaluator_Settings(FedoptSettings):
                 raise SettingsObjectException("Evaluator object is missing the key properties!")
         
         try:
-            self.evaluator_settings["LSAA"]
+            self.evaluator_settings["ALPHA"]
         except KeyError:
             if self.allow_defualt:
-                self.evaluator_settings["LSAA"] = False
+                self.evaluator_settings["ALPHA"] = True
                 print("WARNING! LSAA was disabled by default.")
             else:
                 raise SettingsObjectException("Evaluator object is missing the key properties!")
         
-        try:
-            self.evaluator_settings["EXTENDED_LSAA"]
-        except KeyError:
-            if self.allow_defualt:
-                self.evaluator_settings["EXTENDED_LSAA"] = False
-                print("WARNING! In-sample Shapley was disabled by default.")
-            else:
-                raise SettingsObjectException("Evaluator object is missing the key properties!")
+        # try:
+        #     self.evaluator_settings["EXTENDED_LSAA"]
+        # except KeyError:
+        #     if self.allow_defualt:
+        #         self.evaluator_settings["EXTENDED_LSAA"] = False
+        #         print("WARNING! In-sample Shapley was disabled by default.")
+        #     else:
+        #         raise SettingsObjectException("Evaluator object is missing the key properties!")
         
         try:
             self.evaluator_settings["preserve_evaluation"]
         except KeyError:
             if self.allow_defualt:
-                self.evaluator_settings["preserve_evaluation"] = False
+                self.evaluator_settings["preserve_evaluation"] = True
                 print("WARNING! Preserve-evaluation option was disabled by default.")
             else:
                 raise SettingsObjectException("Evaluator object is missing the key properties!")
@@ -142,12 +146,11 @@ class Evaluator_Settings(FedoptSettings):
         dict"""
         print("WARNING! Generatic a new default archiver template.") #TODO: Switch for logger
         evaluator = dict()
-        evaluator['LOO_OR'] = False
-        evaluator["Shapley_OR"] = False
+        # evaluator['LOO_OR'] = False
+        # evaluator["Shapley_OR"] = False
         evaluator["IN_SAMPLE_LOO"] = True
         evaluator["IN_SAMPLE_SHAP"] = False
-        evaluator["LSAA"] = False
-        evaluator['EXTENDED_LSAA'] = False
+        evaluator["ALPHA"] = True
         evaluator["preserve_evaluation"] = {
             "preserve_partial_results": True,
             "preserve_final_results": True
@@ -166,12 +169,9 @@ class Evaluator_Settings(FedoptSettings):
         -------
         dict"""
         string = f"""
-        Enable One-Round Leave-one-out: {self.evaluator_settings['LOO_OR']},
-        Enable One-Round Shapley: {self.evaluator_settings['Shapley_OR']},
         Enable In-Sample Leave-one-out: {self.evaluator_settings['IN_SAMPLE_LOO']},
         Enable In-Sample Shapley: {self.evaluator_settings['IN_SAMPLE_SHAP']},
-        Enable LSAA: {self.evaluator_settings['LSAA']},
-        Enable Extended LSAA: {self.evaluator_settings['EXTENDED_LSAA']}
+        Enable LSAA: {self.evaluator_settings['ALPHA']},
         Preserve evaluation: {self.evaluator_settings["preserve_evaluation"]},
         Enable full debug mode: {self.evaluator_settings["full_debug"]}
         """
