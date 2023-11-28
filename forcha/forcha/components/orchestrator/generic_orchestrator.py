@@ -53,7 +53,8 @@ class Orchestrator():
     
     def __init__(self, 
                  settings: Settings,
-                 **kwargs) -> None:
+                 **kwargs
+                 ) -> None:
         """Orchestrator is initialized by passing an instance
         of the Settings object. Settings object contains all the relevant configurational
         settings that an instance of the Orchestrator object may need to complete the simulation.
@@ -107,9 +108,11 @@ class Orchestrator():
             Validation dataset that will be used by the Orchestrator.
         model : torch.nn
             Model architecture that will be used throughout the training.
+        
         Returns
         -------
-        None"""
+        None
+        """
         self.validation_data = [validation_data]
         self.central_net = model
         self.central_model = FederatedModel(settings = self.settings.model_settings,
@@ -171,19 +174,23 @@ class Orchestrator():
         
         Parameters
         ----------
-            nodess_list: list[FederatedNode] 
-                The list containing all the initialized FederatedNode instances.
-            model_list: list[nn.Module] 
-                The list containing all the initialized nn.Module objects. 
-                Note that conversion from nn.Module into the FederatedModel will occur 
-                at the local node level.
-            data_list (list[..., ....]): 
-                The list containing train set and test set 
-                wrapped in a hugging facr arrow_dataset.Dataset containers.
+        nodess_list: list[FederatedNode] 
+            The list containing all the initialized FederatedNode instances.
+        model_list: list[nn.Module] 
+            The list containing all the initialized nn.Module objects. 
+            Note that conversion from nn.Module into the FederatedModel will occur 
+            at the local node level.
+        data_list (list[..., ....]): 
+            The list containing train set and test set 
+            wrapped in a hugging facr arrow_dataset.Dataset containers.
+        
+        Returns
+        -------
+        list[FederatedNode]
         
         Raises
         ------
-            list[FederatedNode]"""
+        """
         
         results = []
         for node, model, dataset in zip(nodes_list, model_list, data_list):
@@ -208,10 +215,11 @@ class Orchestrator():
         nodes_data: list[datasets.arrow_dataset.Dataset, datasets.arrow_dataset.Dataset] 
             A list containing train set and test set
             wrapped in a hugging face arrow_dataset.Dataset containers.
-        -------------
-        Returns:
-        Int
-            Returns 0 on the successful completion of the training."""
+
+        Returns
+        -------
+        None
+        """
         
         self.iterations = self.settings.iterations
         self.nodes_number = self.settings.number_of_nodes
@@ -242,16 +250,17 @@ class Orchestrator():
     def train_protocol(self) -> None:
         """Performs a full federated training according to the initialized
         settings. The train_protocol of the generic_orchestrator.Orchestrator
-        follows a classic FedAvg algorithm - it averages the local weights
+        follows a classic FedAvg algorithm - it averages the local weights 
         and aggregates them taking a weighted average.
         SOURCE: Communication-Efficient Learning of
         Deep Networks from Decentralized Data, H.B. McMahan et al.
 
         Parameters
         ----------
-        -------------
-        Returns:
-        Int
+        
+        Returns
+        -------
+        int
             Returns 0 on the successful completion of the training."""
     # TRAINING PHASE ----- FEDAVG
         # FEDAVG - CREATE POOL OF WORKERS
