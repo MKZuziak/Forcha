@@ -11,6 +11,7 @@ class Settings():
         """Initialization of an instance of the Settings object. Requires choosing the initialization method.
         Can be initialized either from a dictionary containing all the relevant key-words or from the 
         manual launch. It is highly advised that the Settings object should be initialized from the dicitonary.
+        
         Parameters
         ----------
         allow_default: bool
@@ -20,9 +21,11 @@ class Settings():
         dict_settings: dict, default to None
             A dictionary containing all the relevant settings if the initialization is made from dir. 
             Default to None
+        
         Returns
         -------
-        None"""
+        None
+        """
         self.allow_defualt = allow_default
         if initialization_method == 'dict':
             self.init_from_dict(dict_settings=dict_settings)
@@ -42,13 +45,17 @@ class Settings():
         flag was set to True during instance creation, a default object will be created in
         absence of the original values. Otherwise, the Setting object will load values passed
         in the dictionary.
+        
+        Parameters
         ----------
         dict_settings: dict, default to None
             A dictionary containing all the relevant settings if the initialization is made from dir. 
             Default to None
+        
         Returns
         -------
-        None"""
+        None
+        """
         # ORCHESTRATOR SETTINGS INITIZALITION
         try:
             self.orchestrator_settings = dict_settings['orchestrator']
@@ -200,13 +207,17 @@ class Settings():
                                 dict_settings: dict):
         """Loads the optimizer configuration onto the settings instance. If the self.allow_default 
         flag was set to True during instance creation, a default archiver tempalte will be created.
+        
+        Parameters
         ----------
         dict_settings: dict, default to None
             A dictionary containing all the relevant settings if the initialization is made from dir. 
             Default to None
+        
         Returns
         -------
-        None"""
+        None
+        """
         try:
             self.archiver_settings = dict_settings['archiver']
         except KeyError:
@@ -353,11 +364,15 @@ class Settings():
 
     def generate_default_orchestrator(self) -> dict:
         """Generates default orchestrator template.
+        
+        Parameters
         ----------
         None
+        
         Returns
         -------
-        dict"""
+        dict
+        """
         print("WARNING! Generating a new default orchestrator template.") #TODO: Switch for logger
         orchestrator = dict()
         orchestrator["iterations"] = 10
@@ -370,11 +385,14 @@ class Settings():
 
     def generate_default_node(self) -> dict:
         """Generates default node template.
+        
+        Parameters
         ----------
-        None
+        
         Returns
         -------
-        dict"""
+        dict
+        """
         print("WARNING! Generating a new default node template.") #TODO: Switch for logger
         node = dict()
         node['model_settings'] = dict()
@@ -384,11 +402,14 @@ class Settings():
 
     def generate_default_model(self) -> dict:
         """Generates default model template.
+        
+        Parameters
         ----------
-        None
+        
         Returns
         -------
-        dict"""
+        dict
+        """
         print("WARNING! Generatic a new default node template.") #TODO: Switch for logger
         model = dict()
         model['optimizer'] = 'RMS'
@@ -398,11 +419,15 @@ class Settings():
 
     def generate_default_archiver(self) -> dict:
         """Generates default model template.
+        
+        Parameters
         ----------
         None
+        
         Returns
         -------
-        dict"""
+        dict
+        """
         print("WARNING! Generatic a new default archiver template.") #TODO: Switch for logger
         archiver = dict()
         time_tuple = time.localtime()
@@ -458,12 +483,16 @@ class Settings():
     def print_orchestrator_template(self,
                                     orchestrator_type: str = 'general'):
         """Prints out the used template for the orchestrator.
+        
+        Parameters
         ----------
         orchestrator_type: str, default to general
             A type of the orchestrator
+        
         Returns
         -------
-        dict"""
+        None
+        """
         string = f"""orchestrator_type: {orchestrator_type},
         iterations: {self.iterations},
         number_of_nodes: {self.number_of_nodes},
@@ -477,11 +506,15 @@ class Settings():
 
     def print_nodes_template(self):
         """Prints out the used template for the nodes.
+        
+        Parameters
         ----------
         None
+        
         Returns
         -------
-        dict"""
+        None
+        """
         string = f"""local_epochs: {self.local_epochs},
         optimizer: {self.optimizer},
         batch_size: {self.batch_size},
@@ -492,11 +525,14 @@ class Settings():
 
     def print_archiver_template(self):
         """Prints out the used template for the archiver.
+        
+        Parameters
         ----------
-        None
+        
         Returns
         -------
-        dict"""
+        None
+        """
         archiver = self.orchestrator_settings['archiver']
         string = f"""Evaluate orchestrator: {archiver['orchestrator']},
         evaluate clients on orchestrator test set: {archiver['clients_on_central']},

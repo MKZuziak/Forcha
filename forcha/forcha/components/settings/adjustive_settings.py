@@ -12,6 +12,7 @@ class Adjustive_Settings(Evaluator_Settings):
         initialization method.Can be initialized either from a dictionary containing all the relevant key-words or from the 
         manual launch. It is highly advised that the Settings object should be initialized from the dicitonary.
         It inherits all the properties and attributes from the Parent class adding additionally the Evaluator object.
+        
         Parameters
         ----------
         allow_default: bool
@@ -21,9 +22,11 @@ class Adjustive_Settings(Evaluator_Settings):
         dict_settings: dict, default to None
             A dictionary containing all the relevant settings if the initialization is made from dir. 
             Default to None
+        
         Returns
         -------
-        None"""
+        None
+        """
         super().__init__(allow_default, 
                          initialization_method, 
                          dict_settings, 
@@ -43,13 +46,17 @@ class Adjustive_Settings(Evaluator_Settings):
         """Loads the evaluator configuration onto the settings instance. If the self.allow_default 
         flag was set to True during instance creation, a default evaluator tempalte will be created
         in absence of the one provided.
+        
+        Parameters
         ----------
         dict_settings: dict, default to None
             A dictionary containing all the relevant settings if the initialization is made from dir. 
             Default to None
+        
         Returns
         -------
-        None"""        
+        None
+        """        
         try:
             self.sampling_array = dict_settings['sampling_array']
             if self.sampling_array == 'uniform':
@@ -91,11 +98,15 @@ class Adjustive_Settings(Evaluator_Settings):
 
     def print_adjustive_template(self):
         """Prints out the used template for the adjustive propierties.
+        
+        Parameters
         ----------
         None
+        
         Returns
         -------
-        dict"""
+        dict
+        """
         string = f"""
         Sampling array: {self.sampling_array},
         Action: {self.action},

@@ -9,6 +9,7 @@ def init_settings(orchestrator_type: str,
                   allow_default: bool = True,
                   **kwargs):
     """Factory function for initializing instance of an appropiate settings object.
+    
     Parameters
     ----------
     orchestrator_type: str
@@ -19,9 +20,12 @@ def init_settings(orchestrator_type: str,
         A dictionary containing all the relevant settings if the initialization is made from dir. 
     allow_default: bool, default to True
         A logical switch to allow using default values in absence of passed values.
+    
     Returns
     -------
-    None"""
+    
+    None
+    """
     if orchestrator_type == 'general':
         return Settings(allow_default=allow_default,
                         initialization_method=initialization_method,

@@ -11,6 +11,7 @@ class FedoptSettings(Settings):
         Can be initialized either from a dictionary containing all the relevant key-words or from the 
         manual launch. It is highly advised that the Settings object should be initialized from the dicitonary.
         It inherits all the properties and attributes from the Parent class addting an additional Optimizer settings.
+        
         Parameters
         ----------
         allow_default: bool
@@ -20,9 +21,11 @@ class FedoptSettings(Settings):
         dict_settings: dict, default to None
             A dictionary containing all the relevant settings if the initialization is made from dir. 
             Default to None
+        
         Returns
         -------
-        None"""
+        None
+        """
         super().__init__(allow_default, 
                          initialization_method, 
                          dict_settings, 
@@ -42,13 +45,17 @@ class FedoptSettings(Settings):
         """Loads the optimizer configuration onto the settings instance. If the self.allow_default 
         flag was set to True during instance creation, a default optimizer tempalte will be created 
         in asbence of any provided.
+        
+        Parameters
         ----------
         dict_settings: dict, default to None
             A dictionary containing all the relevant settings if the initialization is made from dir. 
             Default to None
+        
         Returns
         -------
-        None"""
+        None
+        """
         try:
             self.optimizer_settings = dict_settings['optimizer']
         except KeyError:
@@ -85,11 +92,15 @@ class FedoptSettings(Settings):
 
     def generate_default_optimizer(self):
         """Generates default optimizer template.
+        
+        Parameters
         ----------
         None
+        
         Returns
         -------
-        dict"""
+        dict
+        """
         print("WARNING! Generatic a new default optimizer template.") #TODO: Switch for logger
         optimizer = dict()
         optimizer['name'] = 'Simple'
@@ -99,11 +110,16 @@ class FedoptSettings(Settings):
 
     def print_optimizer_template(self):
         """Prints out the used template for the optimizer.
+        
+        Parameters
         ----------
         None
+        
         Returns
         -------
-        dict"""
+        None
+        
+        """
         if self.optimizer_settings['name'] == 'Simple':
             string = f"""name: {self.optimizer_settings['name']},
             learning_rate : {self.optimizer_settings['learning_rate']},

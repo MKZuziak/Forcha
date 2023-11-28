@@ -11,6 +11,7 @@ class Evaluator_Settings(FedoptSettings):
         Can be initialized either from a dictionary containing all the relevant key-words or from the 
         manual launch. It is highly advised that the Settings object should be initialized from the dicitonary.
         It inherits all the properties and attributes from the Parent class adding additionally the Evaluator object.
+        
         Parameters
         ----------
         allow_default: bool
@@ -20,9 +21,11 @@ class Evaluator_Settings(FedoptSettings):
         dict_settings: dict, default to None
             A dictionary containing all the relevant settings if the initialization is made from dir. 
             Default to None
+        
         Returns
         -------
-        None"""
+        None
+        """
         super().__init__(allow_default, 
                          initialization_method, 
                          dict_settings, 
@@ -42,13 +45,17 @@ class Evaluator_Settings(FedoptSettings):
         """Loads the evaluator configuration onto the settings instance. If the self.allow_default 
         flag was set to True during instance creation, a default evaluator tempalte will be created
         in absence of the one provided.
+        
+        Parameters
         ----------
         dict_settings: dict, default to None
             A dictionary containing all the relevant settings if the initialization is made from dir. 
             Default to None
+        
         Returns
         -------
-        None"""
+        None
+        """
         try:
             self.evaluator_settings = dict_settings['evaluator']
         except KeyError:
@@ -139,11 +146,15 @@ class Evaluator_Settings(FedoptSettings):
     
     def generate_default_evaluator(self):
         """Generates default optimizer template.
+        
+        Parameters
         ----------
         None
+        
         Returns
         -------
-        dict"""
+        dict
+        """
         print("WARNING! Generatic a new default archiver template.") #TODO: Switch for logger
         evaluator = dict()
         # evaluator['LOO_OR'] = False
@@ -163,11 +174,13 @@ class Evaluator_Settings(FedoptSettings):
 
     def print_evaluator_template(self):
         """Prints out the used template for the evaluator.
+        Parameters
         ----------
-        None
+        
         Returns
         -------
-        dict"""
+        dict
+        """
         string = f"""
         Enable In-Sample Leave-one-out: {self.evaluator_settings['IN_SAMPLE_LOO']},
         Enable In-Sample Shapley: {self.evaluator_settings['IN_SAMPLE_SHAP']},
