@@ -23,7 +23,6 @@ def init_settings(orchestrator_type: str,
     
     Returns
     -------
-    
     None
     """
     if orchestrator_type == 'general':
