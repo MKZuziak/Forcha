@@ -52,7 +52,7 @@ def basic_fedopt(iterations: int,
                 "log_results": True,
                 "save_results": True,
                 "save_orchestrator_model": True,
-                "save_nodes_model": False,
+                "save_nodes_model": True,
                 "form_archive": True
                 },
             "optimizer": {

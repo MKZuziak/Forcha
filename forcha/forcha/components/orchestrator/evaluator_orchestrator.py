@@ -1,21 +1,18 @@
-from forcha.components.orchestrator.generic_orchestrator import Orchestrator
-from forcha.utils.orchestrations import create_nodes, sample_nodes, train_nodes
-from forcha.utils.computations import Aggregators
-from forcha.utils.orchestrations import create_nodes, sample_nodes, train_nodes
-from forcha.utils.optimizers import Optimizers
+import copy
 from forcha.components.evaluator.parallel.parallel_manager import Parallel_Manager
 from forcha.components.evaluator.evaluation_manager import Evaluation_Manager
+from forcha.components.orchestrator.generic_orchestrator import Orchestrator
+from forcha.utils.optimizers import Optimizers
+from forcha.utils.computations import Aggregators
+from forcha.utils.orchestrations import sample_nodes, train_nodes
 from forcha.components.settings.settings import Settings
+from forcha.utils.debugger import log_gpu_memory
 from forcha.utils.helpers import Helpers
-import torch
-import datasets
-import copy
 from multiprocessing import Pool
-import numpy as np
-
 
 from multiprocessing import set_start_method
 set_start_method("spawn", force=True)
+
 
 def compare_for_debug(dict1, dict2):
     for (row1, row2) in zip(dict1.values(), dict2.values()):
@@ -23,6 +20,7 @@ def compare_for_debug(dict1, dict2):
             return False
         else:
             return True
+
 
 class Evaluator_Orchestrator(Orchestrator):
     """Orchestrator is a central object necessary for performing the simulation.
@@ -33,7 +31,10 @@ class Evaluator_Orchestrator(Orchestrator):
         is able to assess clients marginal contribution with the help of Evaluation Manager."""
     
     
-    def __init__(self, settings: Settings, **kwargs) -> None:
+    def __init__(self, 
+                 settings: Settings, 
+                 **kwargs
+                 ) -> None:
         """Orchestrator is initialized by passing an instance
         of the Settings object. Settings object contains all the relevant configurational
         settings that an instance of the Orchestrator object may need to complete the simulation.
@@ -42,14 +43,16 @@ class Evaluator_Orchestrator(Orchestrator):
         
         Parameters
         ----------
-        settings: Settings 
-            An instance of the Settings object cotaining all the settings of the orchestrator.
-            The Evaluator Orchestrator additionaly requires the passed object to contain a 
-            configuration for the Optimizer and the Evaluation Manager.
-       
-       Returns
-       -------
-       None
+        settings : Settings
+            An instance of the settings object cotaining all the settings 
+            of the orchestrator.
+        **kwargs : dict, optional
+            Extra arguments to enable selected features of the Orchestrator.
+            passing full_debug to **kwargs, allow to enter a full debug mode.
+
+        Returns
+        -------
+        None
         """
         super().__init__(settings, **kwargs)
     
@@ -73,7 +76,7 @@ class Evaluator_Orchestrator(Orchestrator):
         -------
         int
             Returns 0 on the successful completion of the training.
-            """
+        """
         # OPTIMIZER CLASS OBJECT
         optimizer_settings = self.settings.optimizer_settings # Dict containing instructions for the optimizer, dict.
         self.Optimizer = Optimizers(weights = self.central_model.get_weights(),
@@ -107,8 +110,9 @@ class Evaluator_Orchestrator(Orchestrator):
             # FEDAVG - TRAINING PHASE
             # OPTION: BATCH TRAINING
             if self.batch_job:
+                self.orchestrator_logger.info(f"Entering batched job, size of the batch {self.batch}")
                 for batch in Helpers.chunker(sampled_nodes, size=self.batch):
-                    with Pool(self.sample_size) as pool:
+                    with Pool(len(list(batch))) as pool:
                         results = [pool.apply_async(train_nodes, (node, 'gradients')) for node in batch]
                         # consume the results
                         for result in results:
@@ -117,7 +121,7 @@ class Evaluator_Orchestrator(Orchestrator):
             # OPTION: NON-BATCH TRAINING
             else:
                 with Pool(self.sample_size) as pool:
-                    results = [pool.apply_async(train_nodes, (node, 'gradients')) for node in sampled_nodes]
+                    results = [pool.apply_async(train_nodes, (node, iteration, 'gradients')) for node in sampled_nodes]
                     for result in results:
                         node_id, model_gradients = result.get()
                         gradients[node_id] = copy.deepcopy(model_gradients)

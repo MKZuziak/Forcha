@@ -1,5 +1,5 @@
-from forcha.components.nodes.federated_node import FederatedNode
-import logging, csv
+from torch.nn import Module
+import csv
 from typing import Any
 import os
 
@@ -7,14 +7,23 @@ class Handler:
     """Common class for various utilities handling the data logs."""
     @staticmethod
     def log_model_metrics(iteration: int, 
-                          model: Any,
+                          model: Module,
                           logger,
-                          ) -> None:
+                          ) -> dict[float, float, float, float, float, list, list, list, int]:
         """Used to log the model's metrics (on the orchestrator level).
         
-        Args:
-            iteration (int): Current iteration of the training.
-            node_id (FederatedNode object): Federated Node object that we want to evaluate metrics on.
+        Parameters
+        ----------
+        iteration: int
+            Current iteration of the training.
+        model: torch.nn.Module
+            Network deposited on the client
+        loger: Logger
+            Logger used to handle the entries.
+        
+        Returns
+        -------
+            dict[float, float, float, float, float, list, list, list, int]
         """
         try:
             (
@@ -36,31 +45,37 @@ class Handler:
                         "true_positive_rate": true_positive_rate,
                         "false_positive_rate": false_positive_rate,
                         "epoch": iteration}
-            logger.info(f"Evaluating model after iteration {iteration} on node {model.node_name}. Results: {metrics}")
+            logger.info(f"[ITERATION {iteration} | NODE {model.node_name}] Evaluating central model on node {model.node_name}. Results: {metrics}")
         except Exception as e:
             logger.warning(f"Unable to compute metrics. {e}")
     
 
     @staticmethod
     def save_model_metrics(iteration: int, 
-                           model: Any,
+                           model: Module,
                            logger = None,
                            saving_path: str = None,
                            file_name: str = 'metrics.csv',
                            log_to_screen: bool = False) -> None:
         """Used to save the model metrics.
-        Args:
-            - iteration (int): Current iteration of the training.
-            - node (FederatedNode): FederatedNode Object which metrics we want to save.
-            - participants (list[int]): List of id's of participants
-                that are participating in this simulation. By default,
-                it will be equal to all available nodes -> self.nodes_id
-            - saving_path (str or path-like object): the saving path of the
-                csv file - if none, the file will be saved in the current 
-                working directory.
-            - file_name (str): a desired file name for the metrics, default to
-                'metrics.csv'.
-        Returns:
+        
+        Parameters
+        ----------
+        iteration: int 
+            Current iteration of the training.
+        model: torch.nn.Module 
+            Network deposited on the client
+        logger: Logger (default to None)
+            Logger object that we want to use to handle the logs.
+        saving_path: str (default to None)
+            The saving path of the csv file - if none, the file will be saved in the current working directory.
+        file_name: str 
+            A desired file name for the metrics, default to 'metrics.csv'.
+        log_to_screen: bool (default to False)
+            Boolean flag whether we want to log the results to the screen.
+        
+        Returns
+        -------
             None"""
         try:
             (

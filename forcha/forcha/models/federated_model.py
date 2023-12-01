@@ -23,26 +23,30 @@ class FederatedModel:
     retrieve the weights or perform an indicated number of traning
     epochs.
     """
-    def __init__(
-        self,
-        settings: dict,
-        net: nn.Module,
-        local_dataset: list[arrow_dataset.Dataset, arrow_dataset.Dataset] |
+    def __init__(self,
+                 settings: dict,
+                 net: nn.Module,
+                 local_dataset: list[arrow_dataset.Dataset, arrow_dataset.Dataset] |
                                 list[arrow_dataset.Dataset],
-        node_name: int
+                                node_name: int
     ) -> None:
         """Initialize the Federated Model. This model will be attached to a 
         specific client and will wait for further instructions.
-        -------------
-        Args:
-            settings (dict): Settings for this run.
-            net (nn.Module): Neural Network architecture that we want to use.
-            local_dataset (list[...]): local dataset that will be used with this set.
-            node_name (int): identifier for the node that uses this container.
-            features_name (int): name of key used to retrieve features, e.g. 'image'.
-        -------------
-        Returns:
-            None
+        
+        Parameters
+        ----------
+        settings: dict 
+            The settings of the local node.
+        net: nn.Module 
+            The Neural Network architecture that we want to use.
+        local_dataset: list 
+            The local dataset that will be used with this set.
+        node_name: int 
+            An identifier for the node that uses this container.
+        
+        Returns
+        -------
+        None
         """
         # FORCE CPU IF ENABLED
         force_cpu = settings.get('FORCE_CPU')
@@ -158,23 +162,24 @@ class FederatedModel:
             Please provide list[train_set, test_set] or list[test_set]")
         
 
-    def prepare_data(
-        self,
-        local_dataset: list[arrow_dataset.Dataset, arrow_dataset.Dataset] |
-                                list[arrow_dataset.Dataset],
-        only_test: bool = False
-    ) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+    def prepare_data(self,
+                     local_dataset: list[arrow_dataset.Dataset, arrow_dataset.Dataset] | list[arrow_dataset.Dataset],
+                     only_test: bool = False
+                     ) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
         """Convert training and test data stored on the local client into
         torch.utils.data.DataLoader.
-        Args:
+        
+        Parameters
+        ----------
+        local_dataset: list[...] 
+            A local dataset that should be loaded into DataLoader
+        only_test: bool [default to False]: 
+            If true, only a test set will be returned
+        
+        Returns
         -------------
-            local_dataset (list[...]: local dataset that should be loaded into DataLoader)
-            only_test (bool, default to False): If true, only a test set will be returned
-            Returns
-        -------------
-            Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]: training and test set
-            or
-            Tuple[torch.utils.data.DataLoader]: test set, if only_test == True.
+        Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]: training and test set or
+        Tuple[torch.utils.data.DataLoader]: test set, if only_test == True.
         """
         if only_test == False:
             local_dataset[0] = local_dataset[0].with_transform(self.transform_func)
@@ -206,7 +211,9 @@ class FederatedModel:
             return testloader
 
 
-    def print_data_stats(self, trainloader: torch.utils.data.DataLoader) -> None: #TODO
+    def print_data_stats(self, 
+                         trainloader: torch.utils.data.DataLoader
+                         ) -> None: #TODO
         """Debug function used to print stats about the loaded datasets.
         Args:
             trainloader (torch.utils.data.DataLoader): training set
@@ -226,21 +233,27 @@ class FederatedModel:
 
     def get_weights_list(self) -> list[float]:
         """Get the parameters of the network.
-        Args
-        -------------
-            self
+        
+        Parameters
+        ----------
+        
         Returns
-        -------------
-            List[float]: parameters of the network
+        -------
+        List[float]: parameters of the network
         """
         return [val.cpu().numpy() for _, val in self.net.state_dict().items()]
 
 
-    def get_weights(self):
+    def get_weights(self) -> None:
         """Get the weights of the network.
+        
+        Parameters
+        ----------
+        
         Raises
         -------------
-            Exception: if the model is not initialized it raises an exception
+            Exception: if the model is not initialized it raises an exception.
+        
         Returns
         -------------
             _type_: weights of the network
@@ -248,9 +261,21 @@ class FederatedModel:
         self.net.to(self.cpu) # Dupming weights on cpu.
         return self.net.state_dict()
     
-
-    def get_gradients(self):
+    
+    def get_gradients(self) -> None:
+        """Get the gradients of the network (differences between received and trained model)
         
+        Parameters
+        ----------
+        
+        Raises
+        -------------
+            Exception: if the original model was not preserved.
+        
+        Returns
+        -------------
+            Oredered_Dict: Gradients of the network.
+        """
         assert self.initial_model != None, "Computing gradients require saving initial model first!"
         self.net.to(self.cpu) # Dupming weights on cpu.
         self.initial_model.to(self.cpu)
@@ -265,12 +290,20 @@ class FederatedModel:
 
 
     def update_weights(self, avg_tensors) -> None:
-        """This function updates the weights of the network.
+        """Updates the weights of the network stored on client with passed tensors.
+        
+        Parameters
+        ----------
+        avg_tensors: Ordered_Dict
+            An Ordered Dictionary containing a averaged tensors
+        
         Raises
         ------
-            Exception: _description_
-        Args:
-            avg_tensors (_type_): tensors that we want to use in the network
+        Exception: _description_
+       
+        Returns
+        -------
+        None
         """
         self.net.load_state_dict(avg_tensors, strict=True)
 
@@ -278,48 +311,60 @@ class FederatedModel:
     def store_model_on_disk(self,
                             iteration: int,
                             path: str) -> None: #TODO
-        """This function is used to store the trained model
-        on disk.
+        """Saves local model in a .pt format.
+        Parameters
+        ----------
+        Iteration: int
+            Current iteration
+        Path: str
+            Path to the saved repository
+        
+        Returns: 
+        -------
+        None
+        
         Raises
-        ------
-            Exception: if the model is not initialized it raises an exception
+        -------
+            Exception if the model is not initialized it raises an exception
         """
-        if self.net:
-            name = f"node_{self.node_name}_iteration_{iteration}.pt"
-            save_path = os.path.join(path, name)
-            torch.save(
-                self.net.state_dict(),
-                save_path,
-            )
-        else:
-            raise NotImplementedError
+        name = f"node_{self.node_name}_iteration_{iteration}.pt"
+        save_path = os.path.join(path, name)
+        torch.save(
+            self.net.state_dict(),
+            save_path,
+        )
 
 
     def preserve_initial_model(self) -> None:
         """Preserve the initial model provided at the
         end of the turn (necessary for computing gradients,
         when using aggregating methods such as FedOpt).
-        Args:
-        -------------
-            self
+        
+        Parameters
+        ----------
+        
         Returns
-        -------------
+        -------
             Tuple[float, float]: Loss and accuracy on the training set.
         """
         self.initial_model = copy.deepcopy(self.net)
 
 
-    def train(self) -> tuple[float, torch.tensor]:
+    def train(self,
+              iteration: int,
+              epoch: int) -> tuple[float, torch.tensor]:
         """Train the network and computes loss and accuracy.
-        Args:
-        -------------
-            self
-        Raises
-        ------
-            Exception: Raises an exception when Federated Learning is not initialized
+        
+        Parameters
+        ----------
+        iterations: int 
+            Current iteration
+        epoch: int
+            Current (local) epoch
+        
         Returns
         -------
-            Tuple[float, float]: Loss and accuracy on the training set.
+        None
         """
         criterion = nn.CrossEntropyLoss()
         train_loss = 0
@@ -350,16 +395,18 @@ class FederatedModel:
 
         loss = train_loss / len(self.trainloader)
         accuracy = correct / total
-        model_logger.info(f"Training on {self.node_name} results: loss: {loss}, accuracy: {accuracy}")
+        model_logger.info(f"[ITERATION {iteration} | EPOCH {epoch} | NODE {self.node_name}] Training on {self.node_name} results: loss: {loss}, accuracy: {accuracy}")
+        
         return (loss, 
                 accuracy)
     
 
     def evaluate_model(self) -> tuple[float, float, float, float, float, list]:
         """Validate the network on the local test set.
-        Raises
-        ------
-            Exception: Raises an exception when Federated Learning is not initialized
+        
+        Parameters
+        ----------
+        
         Returns
         -------
             Tuple[float, float]: loss and accuracy on the test set.
@@ -446,13 +493,14 @@ class FederatedModel:
     def quick_evaluate(self) -> tuple[float, float]:
         """Quicker version of the evaluate_model(function) 
         Validate the network on the local test set returning only the loss and accuracy.
-            Raises
-            ------
-                Exception: Raises an exception when Federated Learning is not initialized
-            Returns
-            -------
-                Tuple[float, float]: loss and accuracy on the test set.
-            """
+        
+        Parameters
+        ----------
+        
+        Returns
+        -------
+            Tuple[float, float]: loss and accuracy on the test set.
+        """
         # Try: to place net on device directly during the evaluation stage.
         self.net.to(self.device)
         criterion = nn.CrossEntropyLoss()

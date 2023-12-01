@@ -131,8 +131,8 @@ class Adjustive_Orchestrator(Evaluator_Orchestrator):
             # OPTION: BATCH TRAINING
             if self.batch_job:
                 for batch in Helpers.chunker(sampled_nodes, size=self.batch):
-                    with Pool(sample_size) as pool:
-                        results = [pool.apply_async(train_nodes, (node, 'gradients')) for node in batch]
+                    with Pool(len(list(batch))) as pool:
+                        results = [pool.apply_async(train_nodes, (node, iteration, 'gradients')) for node in batch]
                         # consume the results
                         for result in results:
                             node_id, model_weights = result.get()
@@ -140,7 +140,7 @@ class Adjustive_Orchestrator(Evaluator_Orchestrator):
             # OPTION: NON-BATCH TRAINING
             else:
                 with Pool(sample_size) as pool:
-                    results = [pool.apply_async(train_nodes, (node, 'gradients')) for node in sampled_nodes]
+                    results = [pool.apply_async(train_nodes, (node, iteration, 'gradients')) for node in sampled_nodes]
                     for result in results:
                         node_id, model_gradients = result.get()
                         gradients[node_id] = copy.deepcopy(model_gradients)

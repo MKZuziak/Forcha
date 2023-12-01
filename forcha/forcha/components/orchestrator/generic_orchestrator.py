@@ -71,7 +71,7 @@ class Orchestrator():
        Returns
        -------
        None
-        """
+       """
         self.settings = settings
         # Special option to enter a full debug mode.
         if kwargs.get("full_debug"):
@@ -115,10 +115,11 @@ class Orchestrator():
         """
         self.validation_data = [validation_data]
         self.central_net = model
-        self.central_model = FederatedModel(settings = self.settings.model_settings,
-                                        net=model,
-                                        local_dataset=self.validation_data,
-                                        node_name='orchestrator')
+        self.central_model = FederatedModel(
+            settings = self.settings.model_settings,
+            net=model,
+            local_dataset=self.validation_data,
+            node_name='orchestrator')
     
 
     def model_initialization(self,
@@ -164,14 +165,13 @@ class Orchestrator():
     def nodes_initialization(self,
                              nodes_list: list[FederatedNode],
                              model_list: list[nn.Module],
-                             data_list: list[datasets.arrow_dataset.Dataset, 
-                                    datasets.arrow_dataset.Dataset]
-                                    ) -> list[FederatedNode]:
+                             data_list: list[datasets.arrow_dataset.Dataset, datasets.arrow_dataset.Dataset]
+                             ) -> list[FederatedNode]:
         """Prepare instances of a FederatedNode object for a participation in 
         the Federated Training.  Contrary to the 'create nodes' function, 
         it accepts only already initialized instances of the FederatedNode
         object.
-        
+
         Parameters
         ----------
         nodess_list: list[FederatedNode] 
@@ -194,12 +194,16 @@ class Orchestrator():
         
         results = []
         for node, model, dataset in zip(nodes_list, model_list, data_list):
-            node.prepare_node(model, dataset)
+            node.prepare_node(
+                model = model, 
+                data = dataset,
+                save_model = self.settings.archiver_settings['save_nodes_model'],
+                save_path = self.settings.archiver_settings['nodes_model_savepath']
+                )
             results.append(node)
         nodes_green = []
         for result in results:
-            if check_health(result,
-                            orchestrator_logger=self.orchestrator_logger):
+            if check_health(result, orchestrator_logger=self.orchestrator_logger):
                 nodes_green.append(result)
         return nodes_green # Returning initialized nodes
     
@@ -237,15 +241,21 @@ class Orchestrator():
         
         # Creating nodes
         # Creating (empty) federated nodes
-        self.nodes_green = create_nodes(self.nodes,
-                                        self.settings.nodes_settings)
+        self.nodes_green = create_nodes(
+            self.nodes,
+            self.settings.nodes_settings
+            )
         
-        self.model_list = self.model_initialization(nodes_number=self.nodes_number,
-                                                    model=self.central_net)
+        self.model_list = self.model_initialization(
+            nodes_number=self.nodes_number,
+            model=self.central_net
+            )
         
-        self.nodes_green = self.nodes_initialization(nodes_list=self.nodes_green,
-                                                model_list=self.model_list,
-                                                data_list=nodes_data)      
+        self.nodes_green = self.nodes_initialization(
+            nodes_list=self.nodes_green,
+            model_list=self.model_list,
+            data_list=nodes_data
+            )      
 
     def train_protocol(self) -> None:
         """Performs a full federated training according to the initialized
@@ -262,28 +272,30 @@ class Orchestrator():
         -------
         int
             Returns 0 on the successful completion of the training."""
-    # TRAINING PHASE ----- FEDAVG
+        # TRAINING PHASE ----- FEDAVG
         # FEDAVG - CREATE POOL OF WORKERS
         for iteration in range(self.iterations):
             self.orchestrator_logger.info(f"Iteration {iteration}")
             weights = {}
             # Sampling nodes and asynchronously apply the function
-            sampled_nodes = sample_nodes(self.nodes_green, 
-                                         sample_size=self.sample_size,
-                                         generator=self.generator) # SAMPLING FUNCTION
+            sampled_nodes = sample_nodes(
+                self.nodes_green, 
+                sample_size=self.sample_size,
+                generator=self.generator
+                ) # SAMPLING FUNCTION
             # FEDAVG - TRAINING PHASE
             # OPTION: BATCH TRAINING
             if self.batch_job:
                 for batch in Helpers.chunker(sampled_nodes, size=self.batch):
-                    with Pool(self.sample_size) as pool:
-                        results = [pool.apply_async(train_nodes, (node,)) for node in batch]
+                    with Pool(len(list(batch))) as pool:
+                        results = [pool.apply_async(train_nodes, (node, iteration)) for node in batch]
                         for result in results:
                             node_id, model_weights = result.get()
                             weights[node_id] = model_weights
             # OPTION: NON-BATCH TRAINING
             else:
                 with Pool(self.sample_size) as pool:
-                    results = [pool.apply_async(train_nodes, (node,)) for node in sampled_nodes]
+                    results = [pool.apply_async(train_nodes, (node, iteration)) for node in sampled_nodes]
                     for result in results:
                         node_id, model_weights = result.get()
                         weights[node_id] = model_weights
@@ -296,7 +308,7 @@ class Orchestrator():
             self.central_model.update_weights(avg)
 
             # ARCHIVER: PRESERVING RESULTS
-            if self.settings.enable_archiver == True:
+            if self.enable_archiver == True:
                 self.archive_manager.archive_training_results(iteration = iteration,
                                                               central_model=self.central_model,
                                                               nodes=self.nodes_green)

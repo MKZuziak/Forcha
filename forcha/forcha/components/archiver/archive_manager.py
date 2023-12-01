@@ -4,6 +4,7 @@ from forcha.utils.handlers import Handler
 from forcha.components.nodes.federated_node import FederatedNode
 import os
 
+
 class Archive_Manager():
     def __init__(self,
                  archive_manager: dict,
@@ -76,15 +77,4 @@ class Archive_Manager():
                     Handler.log_model_metrics(iteration = iteration,
                                               model = node.model,
                                               logger = self.logger)
-                
-            if self.save_nodes_model:
-                for node in nodes:
-                    node.model.store_model_on_disk(iteration = iteration,
-                                                path = self.nodes_save_path)
-    
-    def archive_contribution_results(self,
-                                     results: dict,
-                                     mapping: list):
-        pass
-
             

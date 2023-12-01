@@ -116,18 +116,24 @@ def sample_weighted_nodes(nodes: list[FederatedNode],
         return sample
 
 
-def train_nodes(node: FederatedNode, 
-                mode: str = 'weights') -> tuple[int, List[float]]:
+def train_nodes(
+    node: FederatedNode,
+    iteration: int,
+    mode: str = 'weights') -> tuple[int, List[float]]:
     """Used to command the node to start the local training.
     Invokes .train_local_model method and returns the results.
-    -------------
-    Args:
-        node (FederatedNode object): Node that we want to train.
-        mode (str): Mode of the training. 
-            Mode = 'weights': Node will return model's weights.
-            Mode = 'gradients': Node will return model's gradients.
-    -------------
-    Returns:
-        tuple(node_id: str, weights)"""
-    node_id, weights = node.train_local_model(mode = mode)
+    Parameters
+    ----------
+    node: FederatedNode 
+        Node that we want to train.
+    mode: str
+        Mode of the training. 
+        Mode = 'weights': Node will return model's weights.
+        Mode = 'gradients': Node will return model's gradients.
+    Returns
+    -------
+    tuple(node_id: str, weights)"""
+    node_id, weights = node.train_local_model(
+        mode = mode,
+        iteration=iteration)
     return (node_id, weights)
