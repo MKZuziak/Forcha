@@ -676,3 +676,9 @@ forcha/tests/test_runs/fed_opt_heavy/test/archiver_from_09_25_2023__14_35_46/mod
 forcha/tests/test_runs/fed_opt_heavy/test/archiver_from_09_25_2023__14_35_46/models/orchestrator/node_orchestrator_iteration_47.pt
 forcha/tests/test_runs/fed_opt_heavy/test/archiver_from_09_25_2023__14_35_46/models/orchestrator/node_orchestrator_iteration_48.pt
 forcha/tests/test_runs/fed_opt_heavy/test/archiver_from_09_25_2023__14_35_46/models/orchestrator/node_orchestrator_iteration_49.pt
+forcha/tests/sandbox/model_check.ipynb
+forcha/tests/sandbox/diff_model/memory_usage_logs.csv
+forcha/tests/sandbox/diff_model/script.py
+forcha/tests/sandbox/same_model/memory_usage_logs.csv
+forcha/tests/sandbox/same_model/script.py
+forcha/tests/test_cases/amplified_contribution/FMNIST/sensor/gpu_sensor.csv
