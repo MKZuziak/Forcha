@@ -100,21 +100,38 @@ class Evaluator_Orchestrator(Orchestrator):
         for iteration in range(self.iterations):
             self.orchestrator_logger.info(f"Iteration {iteration}")
             gradients = {}
+            
+            # Checking for connectivity
+            connected_nodes = self.update_connectivity()
+            if len(connected_nodes) < self.sample_size:
+                self.orchestrator_logger.warning(f"Not enough connected nodes to draw a full sample! Skipping an iteration {iteration}")
+                continue
+            else:
+                self.orchestrator_logger.info(f"Nodes connected at round {iteration}: {[node.node_id for node in connected_nodes]}")
+            
+            # Weights dispatched before the training (if activated)
+            if self.dispatch_model:
+                for node in connected_nodes:
+                    node.model.update_weights(copy.deepcopy(self.central_model.get_weights()))
+                    self.orchestrator_logger.info(f"Iteration {iteration}, dispatching nodes to connected clients.")
+            
+            
             # EVALUATION MANAGER: preserving the last version of the model and optimizer
             Evaluation_manager.preserve_previous_model(previous_model = copy.deepcopy(self.central_model.get_weights()))
             Evaluation_manager.preserve_previous_optimizer(previous_optimizer = copy.deepcopy(self.Optimizer.get_weights()))
             # Sampling nodes and asynchronously apply the function
-            sampled_nodes = sample_nodes(self.nodes_green, 
-                                         sample_size=self.sample_size,
-                                         generator=self.generator) # SAMPLING FUNCTION -> CHANGE IF NEEDED
-            # FEDAVG - TRAINING PHASE
+            sampled_nodes = sample_nodes(
+                connected_nodes, 
+                sample_size=self.sample_size,
+                generator=self.generator
+                ) # SAMPLING FUNCTION
+            # FEDOPT - TRAINING PHASE
             # OPTION: BATCH TRAINING
             if self.batch_job:
                 self.orchestrator_logger.info(f"Entering batched job, size of the batch {self.batch}")
                 for batch in Helpers.chunker(sampled_nodes, size=self.batch):
                     with Pool(len(list(batch))) as pool:
                         results = [pool.apply_async(train_nodes, (node, 'gradients')) for node in batch]
-                        # consume the results
                         for result in results:
                             node_id, model_gradients = result.get()
                             gradients[node_id] = copy.deepcopy(model_gradients)
@@ -132,7 +149,7 @@ class Evaluator_Orchestrator(Orchestrator):
             updated_weights = self.Optimizer.fed_optimize(weights=self.central_model.get_weights(),
                                                           delta=grad_avg)
             # FEDOPT: UPDATING THE CENTRAL MODEL 
-            self.central_model.update_weights(updated_weights)
+            self.central_model.update_weights(copy.deepcopy(updated_weights))
             # EVALUATOR: PRESERVE UPDATED MODEL
             Evaluation_manager.preserve_updated_model(
                 updated_model = copy.deepcopy(self.central_model.get_weights()))
@@ -142,7 +159,7 @@ class Evaluator_Orchestrator(Orchestrator):
                                              iteration = iteration)
             # FEDOPT: UPDATING THE NODES
             for node in self.nodes_green:
-                node.model.update_weights(updated_weights)         
+                node.model.update_weights(copy.deepcopy(updated_weights))         
                    
             # ARCHIVER: PRESERVING RESULTS
             if self.enable_archiver == True:

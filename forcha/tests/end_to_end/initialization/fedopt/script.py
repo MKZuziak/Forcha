@@ -13,7 +13,7 @@ from forcha.models.templates.mnist import MNIST_Expanded_CNN
 
 def simulation():
     cwd = os.getcwd()
-    config = basic_fedavg(iterations=15,
+    config = basic_fedavg(iterations=4,
                           number_of_nodes=20,
                           sample_size=10,
                           root_path=cwd,

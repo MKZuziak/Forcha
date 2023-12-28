@@ -23,17 +23,27 @@ class FederatedNode:
         -------
         None
         """
-        self.state = 1 # Attribute controlling the state of the object.
-                         # 0 - initialized, resting
-                         # 1 - initialized, in run-time
-        
+        self.state = None # Attribute controlling the state of the object.
+                    # None - not initialized, disonnected
+                    # 0 - initialized, disconnected
+                    # 1 - initialized, connected
         self.node_id = node_id
         self.settings = settings
-        self.state = 0
         self.model = None
         self.train_data = None
         self.test_data = None
 
+    
+    def update_state(self) -> None:
+        """Updates state of the node
+        ------------
+        Arguments:
+            None
+        ------------
+        Returns:
+            None"""
+        self.state = 1
+        # TODO: Update the state accordingly
 
     def prepare_node(self, 
                      model: torch.nn.Module, 
@@ -60,26 +70,17 @@ class FederatedNode:
         None
         """
        
-        self.state = 1
         self.train_data = data[0]
         self.test_data = data[1]
         self.save_model = save_model
         self.save_path = save_path
-
         self.model = FederatedModel(
             settings=self.settings["model_settings"],
             net = model,
             local_dataset = data,
             node_name=self.node_id
         )
-
-        if self.model != None and self.train_data != None \
-        and self.test_data != None:
-            self.state = 0
-        else:
-            # TODO: LOGGING INFO
-            pass
-    
+        self.state = 0
 
     def train_local_model(self,
                           iteration: int,

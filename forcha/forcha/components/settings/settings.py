@@ -109,6 +109,14 @@ class Settings():
             else:
                 raise SettingsObjectException("Orchestrator setting is lacking the sample size value!")
         
+        # Nodes dispatched before the training
+        try:
+            self.nodes_dispatch = self.orchestrator_settings['nodes_dispatch']
+        except KeyError:
+            if self.allow_defualt:
+                self.nodes_dispatch = True
+                print("WARNING! The nodes dispatch option was set to True as a default value")
+        
         # Enable archiver
         try:
             self.enable_archiver = self.orchestrator_settings['enable_archiver']
@@ -380,6 +388,7 @@ class Settings():
         orchestrator["local_warm_start"] = False
         orchestrator["sample_size"] = 5
         orchestrator["enable_archiver"] = False
+        orchestrator['nodes_dispatch'] = True
         return orchestrator
 
 
@@ -499,7 +508,8 @@ class Settings():
         local_warm_start: {self.local_warm_start},
         sample_size:    {self.sample_size},
         enable_archiver: {self.enable_archiver},
-        random_seed: {self.seed}            
+        random_seed: {self.seed},
+        nodes_dispatch: {self.nodes_dispatch}
         """
         print(string) #TODO: Switch for logger
     

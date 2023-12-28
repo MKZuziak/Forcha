@@ -4,13 +4,15 @@ def basic_fedavg(iterations: int,
                     root_path: str,
                     local_lr: float = 0.01,
                     local_epochs: int = 2,
-                    batch_size: int = 32):
+                    batch_size: int = 32,
+                    nodes_dispatch = True):
     return {
         "orchestrator": {
             "iterations": iterations,
             "number_of_nodes": number_of_nodes,
             "sample_size": sample_size,
             'enable_archiver': True,
+            'nodes_dispatch': True,
             "archiver":{
                 "root_path": root_path,
                 "orchestrator": True,
@@ -44,6 +46,7 @@ def basic_fedopt(iterations: int,
             "number_of_nodes": number_of_nodes,
             "sample_size": sample_size,
             'enable_archiver': True,
+            'nodes_dispatch':True,
             "archiver":{
                 "root_path": root_path,
                 "orchestrator": True,

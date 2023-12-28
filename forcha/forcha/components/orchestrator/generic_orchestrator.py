@@ -73,6 +73,7 @@ class Orchestrator():
        None
        """
         self.settings = settings
+        self.network = [] # Network of available nodes (connected and disconnected)
         # Special option to enter a full debug mode.
         if kwargs.get("full_debug"):
             self.full_debug = True
@@ -251,11 +252,19 @@ class Orchestrator():
             model=self.central_net
             )
         
-        self.nodes_green = self.nodes_initialization(
+        self.network = self.nodes_initialization(
             nodes_list=self.nodes_green,
             model_list=self.model_list,
             data_list=nodes_data
-            )      
+            )
+    
+    
+    def update_connectivity(self):
+        for node in self.network:
+            node.update_state()
+        connected = [node for node in self.network if node.state == 1]
+        return connected
+
 
     def train_protocol(self) -> None:
         """Performs a full federated training according to the initialized
@@ -277,15 +286,31 @@ class Orchestrator():
         for iteration in range(self.iterations):
             self.orchestrator_logger.info(f"Iteration {iteration}")
             weights = {}
+            
+            # Checking for connectivity
+            connected_nodes = self.update_connectivity()
+            if len(connected_nodes) < self.sample_size:
+                self.orchestrator_logger.warning(f"Not enough connected nodes to draw a full sample! Skipping an iteration {iteration}")
+                continue
+            else:
+                self.orchestrator_logger.info(f"Nodes connected at round {iteration}: {[node.node_id for node in connected_nodes]}")
+            
+            # Weights dispatched before the training (if activated)
+            if self.dispatch_model:
+                for node in connected_nodes:
+                    node.model.update_weights(copy.deepcopy(self.central_model.get_weights()))
+                    self.orchestrator_logger.info(f"Iteration {iteration}, dispatching nodes to connected clients.")
+            
             # Sampling nodes and asynchronously apply the function
             sampled_nodes = sample_nodes(
-                self.nodes_green, 
+                connected_nodes, 
                 sample_size=self.sample_size,
                 generator=self.generator
                 ) # SAMPLING FUNCTION
             # FEDAVG - TRAINING PHASE
             # OPTION: BATCH TRAINING
             if self.batch_job:
+                self.orchestrator_logger.info(f"Entering batched job, size of the batch {self.batch}")
                 for batch in Helpers.chunker(sampled_nodes, size=self.batch):
                     with Pool(len(list(batch))) as pool:
                         results = [pool.apply_async(train_nodes, (node, iteration)) for node in batch]
@@ -302,16 +327,16 @@ class Orchestrator():
             # FEDAVG: AGGREGATING FUNCTION
             avg = Aggregators.compute_average(weights) # AGGREGATING FUNCTION
             # FEDAVG: UPDATING THE NODES
-            for node in self.nodes_green:
-                node.model.update_weights(avg)
+            for node in connected_nodes:
+                node.model.update_weights(copy.deepcopy(avg))
             # FEDAVG: UPDATING THE CENTRAL MODEL 
-            self.central_model.update_weights(avg)
+            self.central_model.update_weights(copy.deepcopy(avg))
 
             # ARCHIVER: PRESERVING RESULTS
             if self.enable_archiver == True:
                 self.archive_manager.archive_training_results(iteration = iteration,
                                                               central_model=self.central_model,
-                                                              nodes=self.nodes_green)
+                                                              nodes=connected_nodes)
             if self.full_debug == True:
                 log_gpu_memory(iteration=iteration)
 
