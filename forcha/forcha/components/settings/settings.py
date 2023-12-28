@@ -111,10 +111,10 @@ class Settings():
         
         # Nodes dispatched before the training
         try:
-            self.nodes_dispatch = self.orchestrator_settings['nodes_dispatch']
+            self.dispatch_model = self.orchestrator_settings['dispatch_model']
         except KeyError:
             if self.allow_defualt:
-                self.nodes_dispatch = True
+                self.dispatch_model = True
                 print("WARNING! The nodes dispatch option was set to True as a default value")
         
         # Enable archiver
@@ -388,7 +388,7 @@ class Settings():
         orchestrator["local_warm_start"] = False
         orchestrator["sample_size"] = 5
         orchestrator["enable_archiver"] = False
-        orchestrator['nodes_dispatch'] = True
+        orchestrator['dispatch_model'] = True
         return orchestrator
 
 
@@ -509,7 +509,7 @@ class Settings():
         sample_size:    {self.sample_size},
         enable_archiver: {self.enable_archiver},
         random_seed: {self.seed},
-        nodes_dispatch: {self.nodes_dispatch}
+        dispatch_model: {self.dispatch_model}
         """
         print(string) #TODO: Switch for logger
     

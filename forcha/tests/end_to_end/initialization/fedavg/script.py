@@ -9,8 +9,6 @@ from forcha.templates.generate_template import basic_fedavg
 from forcha.components.settings.init_settings import init_settings
 from forcha.models.templates.mnist import MNIST_Expanded_CNN
 
-
-
 def simulation():
     cwd = os.getcwd()
     config = basic_fedavg(iterations=4,
@@ -27,7 +25,7 @@ def simulation():
          dict_settings = config,
          allow_default=True)
     
-    with open(r'/home/mzuziak/snap/snapd-desktop-integration/83/Documents/Forcha/forcha/tests/end_to_end/datasets/dataset_2/FMNIST_20_dataset', 'rb') as path:
+    with open(r'/home/mzuziak/snap/snapd-desktop-integration/83/Documents/Forcha/forcha/tests/end_to_end/datasets/dataset_2/FMNIST_20_dataset_pointers', 'rb') as path:
         data = pickle.load(path)
     # DATA: Selecting data for the orchestrator
     orchestrator_data = data[0]
