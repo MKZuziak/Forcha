@@ -1,0 +1,1 @@
+Currently, amplified contribution is implemeneted incorrectly. To correct and test.

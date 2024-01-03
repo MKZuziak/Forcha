@@ -7,7 +7,7 @@ def generate():
     data_config = {
     "dataset_name" : "mnist",
     "split_type" : "homogeneous",
-    "shards": 20,
+    "shards": 5,
     "local_test_size": 0.3,
     "transformations": {0: {"transformation_type": "noise", "noise_multiplyer": 0.4},
                         1: {"transformation_type": "noise", "noise_multiplyer": 0.3},
@@ -18,7 +18,7 @@ def generate():
     "save_dataset": True,
     "save_transformations": True,
     "save_blueprint": True,
-    "agents": 20,
+    "agents": 5,
     "shuffle": True,
     "save_path": os.getcwd()}
     # Execution

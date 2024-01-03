@@ -17,7 +17,8 @@ def simulation():
                           root_path=cwd,
                           local_lr=0.1,
                           local_epochs=2,
-                          batch_size=32)
+                          batch_size=32,
+                          force_cpu=True)
     
     settings = init_settings(
          orchestrator_type='general',

@@ -4,27 +4,28 @@ according to predefined schema. During the training, three contribution metrics 
 
 import pickle
 import os
-from forcha.components.orchestrator.fedopt_orchestrator import Fedopt_Orchestrator
-from forcha.templates.generate_template import basic_fedopt
+from forcha.components.orchestrator.evaluator_orchestrator import Evaluator_Orchestrator
+from forcha.templates.generate_template import basic_evaluator
 from forcha.components.settings.init_settings import init_settings
-from forcha.models.templates.mnist import MNIST_Expanded_CNN
+from forcha.models.templates.mnist import MNIST_MLP
 
 
 
 def simulation():
     cwd = os.getcwd()
-    config = basic_fedopt(iterations=4,
-                          number_of_nodes=20,
-                          sample_size=10,
-                          root_path=cwd,
-                          local_lr=0.1,
-                          central_lr=0.5,
-                          local_epochs=2,
-                          batch_size=32,
-                          force_cpu=True)
+    config = basic_evaluator(iterations=4,
+                             number_of_nodes=5,
+                             sample_size=5,
+                             root_path=cwd,
+                             local_lr=0.1,
+                             central_lr=1.0,
+                             local_epochs=2,
+                             batch_size=32,
+                             force_cpu=True,
+                             ALPHA=True)
     
     settings = init_settings(
-         orchestrator_type='fed_opt',
+         orchestrator_type='evaluator',
          initialization_method='dict',
          dict_settings = config,
          allow_default=True)
@@ -35,8 +36,8 @@ def simulation():
     orchestrator_data = data[0]
     # DATA: Selecting data for nodes
     nodes_data = data[1]
-    model = MNIST_Expanded_CNN()
-    orchestrator = Fedopt_Orchestrator(settings=settings, full_debug=True)
+    model = MNIST_MLP()
+    orchestrator = Evaluator_Orchestrator(settings=settings, full_debug=True)
     
     orchestrator.prepare_orchestrator(
          model=model, 

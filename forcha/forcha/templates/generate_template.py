@@ -5,14 +5,15 @@ def basic_fedavg(iterations: int,
                     local_lr: float = 0.01,
                     local_epochs: int = 2,
                     batch_size: int = 32,
-                    nodes_dispatch = True):
+                    dispatch_model: bool = True,
+                    force_cpu: bool = False):
     return {
         "orchestrator": {
             "iterations": iterations,
             "number_of_nodes": number_of_nodes,
             "sample_size": sample_size,
             'enable_archiver': True,
-            'dispatch_model': True,
+            'dispatch_model': dispatch_model,
             "archiver":{
                 "root_path": root_path,
                 "orchestrator": True,
@@ -21,7 +22,7 @@ def basic_fedavg(iterations: int,
                 "log_results": True,
                 "save_results": True,
                 "save_orchestrator_model": True,
-                "save_nodes_model": False,
+                "save_nodes_model": True,
                 "form_archive": True
                 }},
         "nodes":{
@@ -30,7 +31,7 @@ def basic_fedavg(iterations: int,
                 "optimizer": "SGD",
                 "batch_size": batch_size,
                 "learning_rate": local_lr,
-                "FORCE_CPU": False}}}
+                "FORCE_CPU": force_cpu}}}
 
 def basic_fedopt(iterations: int,
                     number_of_nodes: int,
@@ -39,14 +40,16 @@ def basic_fedopt(iterations: int,
                     local_lr: float = 0.01,
                     central_lr: float = 0.5,
                     local_epochs: int = 2,
-                    batch_size: int = 32):
+                    batch_size: int = 32,
+                    dispatch_model: bool = True,
+                    force_cpu: bool = False):
     return {
         "orchestrator": {
             "iterations": iterations,
             "number_of_nodes": number_of_nodes,
             "sample_size": sample_size,
             'enable_archiver': True,
-            'dispatch_model':True,
+            'dispatch_model': dispatch_model,
             "archiver":{
                 "root_path": root_path,
                 "orchestrator": True,
@@ -68,7 +71,7 @@ def basic_fedopt(iterations: int,
                 "optimizer": "SGD",
                 "batch_size": batch_size,
                 "learning_rate": local_lr,
-                "FORCE_CPU": False}}}
+                "FORCE_CPU": force_cpu}}}
 
 def basic_evaluator(iterations: int,
                     number_of_nodes: int,
@@ -80,13 +83,16 @@ def basic_evaluator(iterations: int,
                     batch_size: int = 32,
                     LOO: bool = True,
                     ALPHA: bool = True,
-                    search_length: int = 1):
+                    search_length: int = 1,
+                    dispatch_model: bool = True,
+                    force_cpu: bool = False):
     return {
         "orchestrator": {
             "iterations": iterations,
             "number_of_nodes": number_of_nodes,
             "sample_size": sample_size,
             'enable_archiver': True,
+            'dispatch_model': dispatch_model,
             "archiver":{
                 "root_path": root_path,
                 "orchestrator": True,
@@ -121,4 +127,4 @@ def basic_evaluator(iterations: int,
                 "optimizer": "SGD",
                 "batch_size": batch_size,
                 "learning_rate": local_lr,
-                "FORCE_CPU": False}}}
+                "FORCE_CPU": force_cpu}}}

@@ -86,10 +86,10 @@ class Fedopt_Orchestrator(Orchestrator):
                 self.orchestrator_logger.info(f"Nodes connected at round {iteration}: {[node.node_id for node in connected_nodes]}")
             
             # Weights dispatched before the training (if activated)
-            if self.dispatch_model:
+            if self.settings.dispatch_model:
                 for node in connected_nodes:
                     node.model.update_weights(copy.deepcopy(self.central_model.get_weights()))
-                    self.orchestrator_logger.info(f"Iteration {iteration}, dispatching nodes to connected clients.")
+                self.orchestrator_logger.info(f"Iteration {iteration}, dispatching nodes to connected clients.")
             
             # Sampling nodes and asynchronously apply the function
             sampled_nodes = sample_nodes(
