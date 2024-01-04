@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from torch import zeros
+from torch import rand
 import torch
 import copy
 
@@ -10,8 +11,8 @@ class Optimizers():
         # Seting up a device for the Optimizer. Please note, that the device must be the same as this
         # that the nets were placed on. Otherwise, PyTorch will raise an exception trying to combine
         # data placed on CPU and GPU.
-        self.previous_delta = OrderedDict((key, zeros(weights[key].size())) for key in weights.keys())
-        self.previous_momentum = OrderedDict((key, zeros(weights[key].size())) for key in weights.keys())
+        self.previous_delta = OrderedDict((key, rand(weights[key].size())) for key in weights.keys())
+        self.previous_momentum = OrderedDict((key, rand(weights[key].size())) for key in weights.keys())
         self.optimizer = settings['name']
         self.learning_rate = torch.tensor(settings['learning_rate'])
 

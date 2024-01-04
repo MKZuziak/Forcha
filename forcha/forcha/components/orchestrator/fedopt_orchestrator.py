@@ -115,9 +115,11 @@ class Fedopt_Orchestrator(Orchestrator):
                         node_id, model_gradients = result.get()
                         gradients[node_id] = copy.deepcopy(model_gradients)
             # FEDOPT: AGGREGATING FUNCTION
-            grad_avg = Aggregators.compute_average(gradients) # AGGREGATING FUNCTION
-            updated_weights = self.Optimizer.fed_optimize(weights=self.central_model.get_weights(),
-                                                          delta=grad_avg) 
+            grad_avg = Aggregators.compute_average(copy.deepcopy(gradients)) # AGGREGATING FUNCTION
+                        
+            updated_weights = self.Optimizer.fed_optimize(weights=copy.deepcopy(self.central_model.get_weights()),
+                                                          delta=copy.deepcopy(grad_avg))
+                        
             # FEDOPT: UPDATING THE NODES
             for node in connected_nodes:
                 node.model.update_weights(copy.deepcopy(updated_weights))

@@ -78,13 +78,13 @@ class FedoptSettings(Settings):
                 raise SettingsObjectException("Optimizer object is missing the key properties!")
         
         if self.optimizer_settings['name'] == "FedAdagard":
-            assert self.optimizer_settings['b1'], SettingsObjectException("FedAdagard requires b1 value!")
-            assert self.optimizer_settings['tau'], SettingsObjectException("FedAdagard requires tau value!")
+            assert self.optimizer_settings['b1'] != None, SettingsObjectException("FedAdagard requires b1 value!")
+            assert self.optimizer_settings['tau'] != None, SettingsObjectException("FedAdagard requires tau value!")
         
         if self.optimizer_settings['name'] == "FedAdam" or self.optimizer_settings['name'] == 'FedYogi':
-            assert self.optimizer_settings['b1'], SettingsObjectException("FedAdam or Fedyogi requires b1 value!")
-            assert self.optimizer_settings['b2'], SettingsObjectException("FedAdam or FedYogi requires b2 balue!")
-            assert self.optimizer_settings['tau'], SettingsObjectException("FedAdam or FedYogi requires tau value!")
+            assert self.optimizer_settings['b1'] != None, SettingsObjectException("FedAdam or Fedyogi requires b1 value!")
+            assert self.optimizer_settings['b2'] != None, SettingsObjectException("FedAdam or FedYogi requires b2 balue!")
+            assert self.optimizer_settings['tau'] !=None, SettingsObjectException("FedAdam or FedYogi requires tau value!")
         
         self.orchestrator_settings['optimizer'] = self.optimizer_settings # Attachings archiver settings to orchestrator settings.
         self.print_optimizer_template()
