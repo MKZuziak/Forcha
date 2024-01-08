@@ -1,14 +1,19 @@
 import torch
+from numpy import array
+from numpy.random import default_rng
 from datasets import arrow_dataset
 from forcha.models.federated_model import FederatedModel
 from forcha.utils.loggers import Loggers
+from forcha.utils.helpers import find_nearest
 
 node_logger = Loggers.node_logger()
 
 class FederatedNode:
     def __init__(self, 
                  node_id: int,
-                 settings: dict
+                 settings: dict,
+                 group: int = None,
+                 seed: float | int = 42
                  ) -> None:
         """An abstract object representing a single node in the federated training.
         
@@ -18,32 +23,60 @@ class FederatedNode:
             An int identifier of a node
         settings: dict
             A dictionary containing settings for the node
-        
+        group: int, default to None
+            A group assigned to a device. Important for performing MCFC simulations, default to None.
+        seed: float or int, default to 42
+            The seed assigned to a particular Random Generator. Important for performing MCFC simulations, default to 42.
         Returns
         -------
         None
         """
         self.state = None # Attribute controlling the state of the object.
-                    # None - not initialized, disonnected
-                    # 0 - initialized, disconnected
-                    # 1 - initialized, connected
         self.node_id = node_id
         self.settings = settings
         self.model = None
         self.train_data = None
         self.test_data = None
-
+        
+        self.transition_matrix = None # Transition matrix, important for performing MCFL.
+        self.group = group
+        self.generator = default_rng(seed=(seed + node_id))
+            
+            
+    def load_transition_matrix(self,
+                               transition_matrix: array) -> None:
+        """Loads the transition matrix for performing
+        MCFL simulation. 
+        
+        Parameters
+        ----------
+        transition_matrix: array
+            Transition matrix of the states used during performing MCFL simulation.
+        Returns
+        ------------
+        None
+        """
+        self.transition_matrix = transition_matrix
+        self.states = [i for i in range(self.transition_matrix.shape[0])]
     
-    def update_state(self) -> None:
+    
+    def update_state(self,
+                     iteration: int) -> None:
         """Updates state of the node
         ------------
         Arguments:
-            None
+        iteration: int
+            Current Iteration of the training.
         ------------
         Returns:
             None"""
-        self.state = 1
+        if self.transition_matrix.any():
+            self.state = self.generator.choice(a=self.states, p=self.transition_matrix[self.state, :])
+            node_logger.info(f"[ITERATION {iteration} | NODE {self.node_id}] transitioned to state {self.state}")
+        else:
+            self.state = 1
         # TODO: Update the state accordingly
+
 
     def prepare_node(self, 
                      model: torch.nn.Module, 
@@ -81,6 +114,7 @@ class FederatedNode:
             node_name=self.node_id
         )
         self.state = 0
+
 
     def train_local_model(self,
                           iteration: int,
