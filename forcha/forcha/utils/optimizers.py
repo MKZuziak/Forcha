@@ -85,7 +85,7 @@ class Optimizers():
                      delta: OrderedDict,
                      learning_rate: float):
         """Adds gradients to the central weights, concluding one round of Federated Training."""
-        updated_weights = OrderedDict.fromkeys(weights.keys(), 0)
+        updated_weights = OrderedDict((key, zeros(weights[key].size())) for key in weights.keys())
         for key in weights:
             updated_weights[key] = weights[key] + (learning_rate * delta[key])
         return updated_weights
