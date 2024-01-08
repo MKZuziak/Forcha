@@ -1,6 +1,26 @@
 import json
+import numpy as np
 
+def find_nearest(array: np.array, 
+                 value: float | int):
+    """Finds the nearest entry in the matrix to the passed value.
+    
+    Parameters:
+    ----------
+    array: numpy.array
+        An array to be searched.
+    value: int | float
+        A value to which we search the closest entry.
+    
+    Returns
+    -------
+    index of the nearest value in the array.
+    """
+    array = np.asarray(array)
+    idx = (np.abs(array - value).argmin())
+    return idx
 
+# TODO: Refactor, the class Helpers is not necessary
 class Helpers:
     @staticmethod
     def load_from_json(path: 'str', convert_keys: bool = False) -> dict:
