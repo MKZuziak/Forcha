@@ -15,7 +15,7 @@ def simulation():
     cwd = os.getcwd()
     config = basic_fedopt(iterations=4,
                           number_of_nodes=20,
-                          sample_size=10,
+                          sample_size=1,
                           root_path=cwd,
                           local_lr=0.1,
                           central_lr=0.5,

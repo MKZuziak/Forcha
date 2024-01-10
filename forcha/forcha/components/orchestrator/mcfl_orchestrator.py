@@ -93,6 +93,7 @@ class MCFL_Orchestrator(Orchestrator):
         for iteration in range(self.iterations):
             self.orchestrator_logger.info(f"Iteration {iteration}")
             gradients = {}
+            training_results = {}
             
             self.check_status(list_of_nodes=self.network,
                               iteration=iteration)        
@@ -120,7 +121,7 @@ class MCFL_Orchestrator(Orchestrator):
             # OPTION: BATCH TRAINING
             
             sampled_nodes = [node for node in sampled_nodes if node.state == 1]
-            if sampled_nodes != None:
+            if len(sampled_nodes) != 0:
                 self.orchestrator_logger.info(f"Nodes that sent back the model at {iteration}: {[node.node_id for node in sampled_nodes]}")
                 if self.batch_job:
                     self.orchestrator_logger.info(f"Entering batched job, size of the batch {self.batch}")
@@ -128,32 +129,49 @@ class MCFL_Orchestrator(Orchestrator):
                         with Pool(len(list(batch))) as pool:
                             results = [pool.apply_async(train_nodes, (node, iteration, 'gradients')) for node in batch]
                             for result in results:
-                                node_id, model_weights = result.get()
+                                node_id, model_weights, loss_list, accuracy_list = result.get()
                                 gradients[node_id] = copy.deepcopy(model_weights)
+                                training_results[node_id] = {
+                                    "iteration": iteration,
+                                    "node_id": node_id,
+                                    "loss": loss_list[-1], 
+                                    "accuracy": accuracy_list[-1]}
                 # OPTION: NON-BATCH TRAINING
                 else:
                     with Pool(self.sample_size) as pool:
                         results = [pool.apply_async(train_nodes, (node, iteration, 'gradients')) for node in sampled_nodes]
                         for result in results:
-                            node_id, model_gradients = result.get()
-                            gradients[node_id] = copy.deepcopy(model_gradients)
+                            node_id, model_weights, loss_list, accuracy_list = result.get()
+                            gradients[node_id] = copy.deepcopy(model_weights)
+                            training_results[node_id] = {
+                                "iteration": iteration,
+                                "node_id": node_id,
+                                "loss": loss_list[-1], 
+                                "accuracy": accuracy_list[-1]}
                 # FEDOPT: AGGREGATING FUNCTION
-                grad_avg = Aggregators.compute_average(copy.deepcopy(gradients)) # AGGREGATING FUNCTION
-                            
-                updated_weights = self.Optimizer.fed_optimize(weights=copy.deepcopy(self.central_model.get_weights()),
+                    grad_avg = Aggregators.compute_average(copy.deepcopy(gradients)) # AGGREGATING FUNCTION
+                    # ARCHIVER: PRESERVING TRAINING ON NODES RESULTS
+                    if self.enable_archiver == True:
+                        self.archive_manager.archive_training_results(
+                            iteration = iteration,
+                            results=training_results
+                        )
+                    
+                    updated_weights = self.Optimizer.fed_optimize(weights=copy.deepcopy(self.central_model.get_weights()),
                                                             delta=copy.deepcopy(grad_avg))
                             
-                # FEDOPT: UPDATING THE NODES
-                for node in connected_nodes:
-                    node.model.update_weights(copy.deepcopy(updated_weights))
-                # FEDOPT: UPDATING THE CENTRAL MODEL 
-                self.central_model.update_weights(copy.deepcopy(updated_weights))
+                    # FEDOPT: UPDATING THE NODES
+                    for node in connected_nodes:
+                        node.model.update_weights(copy.deepcopy(updated_weights))
+                    # FEDOPT: UPDATING THE CENTRAL MODEL 
+                    self.central_model.update_weights(copy.deepcopy(updated_weights))
                     
-                # ARCHIVER: PRESERVING RESULTS
-                if self.enable_archiver:
-                    self.archive_manager.archive_training_results(iteration = iteration,
-                                                                central_model=self.central_model,
-                                                                nodes=self.nodes_green)
+                    # ARCHIVER: PRESERVING RESULTS
+                    if self.enable_archiver == True:
+                        self.archive_manager.archive_testing_results(
+                            iteration = iteration,
+                            central_model=self.central_model,
+                            nodes=connected_nodes)
             else:
                 print(f"No nodes sent back the weights at iteration {iteration}")
             

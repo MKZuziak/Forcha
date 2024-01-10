@@ -76,9 +76,10 @@ class Fedopt_Orchestrator(Orchestrator):
         for iteration in range(self.iterations):
             self.orchestrator_logger.info(f"Iteration {iteration}")
             gradients = {}
+            training_results = {}
         
             # Checking for connectivity
-            connected_nodes = self.update_connectivity()
+            connected_nodes = [node for node in self.network]
             if len(connected_nodes) < self.sample_size:
                 self.orchestrator_logger.warning(f"Not enough connected nodes to draw a full sample! Skipping an iteration {iteration}")
                 continue
@@ -105,21 +106,36 @@ class Fedopt_Orchestrator(Orchestrator):
                     with Pool(len(list(batch))) as pool:
                         results = [pool.apply_async(train_nodes, (node, iteration, 'gradients')) for node in batch]
                         for result in results:
-                            node_id, model_weights = result.get()
+                            node_id, model_weights, loss_list, accuracy_list = result.get()
                             gradients[node_id] = copy.deepcopy(model_weights)
+                            training_results[node_id] = {
+                                "iteration": iteration,
+                                "node_id": node_id,
+                                "loss": loss_list[-1], 
+                                "accuracy": accuracy_list[-1]}
             # OPTION: NON-BATCH TRAINING
             else:
                 with Pool(self.sample_size) as pool:
                     results = [pool.apply_async(train_nodes, (node, iteration, 'gradients')) for node in sampled_nodes]
                     for result in results:
-                        node_id, model_gradients = result.get()
-                        gradients[node_id] = copy.deepcopy(model_gradients)
+                            node_id, model_weights, loss_list, accuracy_list = result.get()
+                            gradients[node_id] = copy.deepcopy(model_weights)
+                            training_results[node_id] = {
+                                "iteration": iteration,
+                                "node_id": node_id,
+                                "loss": loss_list[-1], 
+                                "accuracy": accuracy_list[-1]}
             # FEDOPT: AGGREGATING FUNCTION
             grad_avg = Aggregators.compute_average(copy.deepcopy(gradients)) # AGGREGATING FUNCTION
+            # ARCHIVER: PRESERVING TRAINING ON NODES RESULTS
+            if self.enable_archiver == True:
+                self.archive_manager.archive_training_results(
+                    iteration = iteration,
+                    results=training_results
+                )
                         
             updated_weights = self.Optimizer.fed_optimize(weights=copy.deepcopy(self.central_model.get_weights()),
                                                           delta=copy.deepcopy(grad_avg))
-                        
             # FEDOPT: UPDATING THE NODES
             for node in connected_nodes:
                 node.model.update_weights(copy.deepcopy(updated_weights))
@@ -127,10 +143,11 @@ class Fedopt_Orchestrator(Orchestrator):
             self.central_model.update_weights(copy.deepcopy(updated_weights))
                    
             # ARCHIVER: PRESERVING RESULTS
-            if self.enable_archiver:
-                self.archive_manager.archive_training_results(iteration = iteration,
-                                                              central_model=self.central_model,
-                                                              nodes=self.nodes_green)
+            if self.enable_archiver == True:
+                self.archive_manager.archive_testing_results(
+                    iteration = iteration,
+                    central_model=self.central_model,
+                    nodes=connected_nodes)
             
             if self.full_debug == True:
                 log_gpu_memory(iteration=iteration)

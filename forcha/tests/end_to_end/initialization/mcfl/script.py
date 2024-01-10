@@ -16,13 +16,13 @@ def simulation():
     cwd = os.getcwd()
     config = basic_fedopt(iterations=4,
                           number_of_nodes=20,
-                          sample_size=10,
+                          sample_size=2,
                           root_path=cwd,
                           local_lr=0.1,
                           central_lr=0.5,
                           local_epochs=2,
                           batch_size=32,
-                          force_cpu=False)
+                          force_cpu=True)
     
     settings = init_settings(
          orchestrator_type='fed_opt',
