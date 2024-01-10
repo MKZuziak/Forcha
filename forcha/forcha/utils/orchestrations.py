@@ -133,7 +133,7 @@ def train_nodes(
     Returns
     -------
     tuple(node_id: str, weights)"""
-    node_id, weights = node.train_local_model(
+    node_id, weights, loss_list, accuracy_list = node.train_local_model(
         mode = mode,
         iteration=iteration)
-    return (node_id, weights)
+    return (node_id, weights, loss_list, accuracy_list)

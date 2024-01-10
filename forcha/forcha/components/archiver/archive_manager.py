@@ -42,10 +42,22 @@ class Archive_Manager():
         if logger != None:
             self.logger = logger
     
-    def archive_training_results(self,
-                        iteration: int,
-                        central_model: FederatedModel,
-                        nodes: list[FederatedNode]
+    def archive_training_results(
+        self,
+        iteration: int,
+        results: dict
+    ):
+        if self.orchestrator_metrics:
+            Handler.save_training_metrics(file=results,
+                                  saving_path = self.metrics_savepath,
+                                  file_name = 'training_metrics.csv')
+    
+    
+    def archive_testing_results(
+        self,
+        iteration: int,
+        central_model: FederatedModel,
+        nodes: list[FederatedNode]
     ):
         if self.orchestrator_metrics:
             if self.save_results:

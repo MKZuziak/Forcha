@@ -122,3 +122,18 @@ class Handler:
             writer.writeheader()
             for row in file:
                 writer.writerow(row)
+    
+    
+    @staticmethod
+    def save_training_metrics(file,
+                              saving_path: str = None,
+                              file_name: str = 'metrics.csv') -> None:
+        """Used to preserve the content of a csv file."""
+        path = os.path.join(saving_path, file_name)
+        with open(path, 'a+', newline='') as csv_file:
+            writer = csv.DictWriter(csv_file, next(iter(file.values())).keys())
+            if os.path.getsize(path) == 0:
+                writer.writeheader()
+            for row in file.values():
+                writer.writerow(row)
+            

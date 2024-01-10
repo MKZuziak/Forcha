@@ -860,3 +860,4 @@ forcha/tests/end_to_end/datasets/dataset/MNIST_5_dataset/client_4_train_set/stat
 forcha/tests/end_to_end/datasets/dataset/MNIST_5_dataset/orchestrator_test_set/data-00000-of-00001.arrow
 forcha/tests/end_to_end/datasets/dataset/MNIST_5_dataset/orchestrator_test_set/dataset_info.json
 forcha/tests/end_to_end/datasets/dataset/MNIST_5_dataset/orchestrator_test_set/state.json
+memory_usage_logs.csv

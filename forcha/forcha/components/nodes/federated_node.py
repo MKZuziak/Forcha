@@ -162,18 +162,24 @@ class FederatedNode:
         if mode == 'weights:':
             return (
                 self.node_id,
-                self.model.get_weights()
+                self.model.get_weights(),
+                loss_list,
+                accuracy_list
                 )
         elif mode == 'gradients':
             return (
                 self.node_id,
-                self.model.get_gradients()
+                self.model.get_gradients(),
+                loss_list,
+                accuracy_list
                 )
         else:
             node_logger.info(f"[ITERATION {iteration} | NODE {self.node_id}] No mode was provided, returning only model's weights")
             return (
                 self.node_id,
-                self.model.get_weights()
+                self.model.get_weights(),
+                loss_list,
+                accuracy_list
                 )
 
 
