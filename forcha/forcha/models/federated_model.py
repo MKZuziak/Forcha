@@ -23,13 +23,13 @@ class FederatedModel:
     retrieve the weights or perform an indicated number of traning
     epochs.
     """
-    def __init__(self,
-                 settings: dict,
-                 net: nn.Module,
-                 local_dataset: list[arrow_dataset.Dataset, arrow_dataset.Dataset] |
-                                list[arrow_dataset.Dataset],
-                                node_name: int
-    ) -> None:
+    def __init__(
+        self,
+        settings: dict,
+        net: nn.Module,
+        local_dataset: list[arrow_dataset.Dataset, arrow_dataset.Dataset] | list[arrow_dataset.Dataset],
+        node_name: int
+        ) -> None:
         """Initialize the Federated Model. This model will be attached to a 
         specific client and will wait for further instructions.
         
@@ -63,7 +63,7 @@ class FederatedModel:
         assert net, "Could not find net object, please ensure that a valid nn.Module was passed in a function call."
         assert local_dataset, "Could not find local dataset that should be used with that model. Pleasure ensure that local dataset was passed in a function call."
         
-        self.net = net # No need to create a deep copy
+        self.net = copy.deepcopy(net) # Do we need to create a deepcopy?
         self.settings = settings
         self.node_name = node_name
         # If both, train and test data were provided
@@ -162,10 +162,11 @@ class FederatedModel:
             Please provide list[train_set, test_set] or list[test_set]")
         
 
-    def prepare_data(self,
-                     local_dataset: list[arrow_dataset.Dataset, arrow_dataset.Dataset] | list[arrow_dataset.Dataset],
-                     only_test: bool = False
-                     ) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+    def prepare_data(
+        self,
+        local_dataset: list[arrow_dataset.Dataset, arrow_dataset.Dataset] | list[arrow_dataset.Dataset],
+        only_test: bool = False
+        ) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
         """Convert training and test data stored on the local client into
         torch.utils.data.DataLoader.
         
@@ -211,9 +212,10 @@ class FederatedModel:
             return testloader
 
 
-    def print_data_stats(self, 
-                         trainloader: torch.utils.data.DataLoader
-                         ) -> None: #TODO
+    def print_data_stats(
+        self, 
+        trainloader: torch.utils.data.DataLoader
+        ) -> None: #TODO
         """Debug function used to print stats about the loaded datasets.
         Args:
             trainloader (torch.utils.data.DataLoader): training set
@@ -289,7 +291,10 @@ class FederatedModel:
         return self.gradients # Try: to provide original weights, no copies
 
 
-    def update_weights(self, avg_tensors) -> None:
+    def update_weights(
+        self, 
+        avg_tensors
+        ) -> None:
         """Updates the weights of the network stored on client with passed tensors.
         
         Parameters
@@ -308,9 +313,11 @@ class FederatedModel:
         self.net.load_state_dict(avg_tensors, strict=True)
 
 
-    def store_model_on_disk(self,
-                            iteration: int,
-                            path: str) -> None: #TODO
+    def store_model_on_disk(
+        self,
+        iteration: int,
+        path: str
+        ) -> None:
         """Saves local model in a .pt format.
         Parameters
         ----------
@@ -350,9 +357,11 @@ class FederatedModel:
         self.initial_model = copy.deepcopy(self.net)
 
 
-    def train(self,
-              iteration: int,
-              epoch: int) -> tuple[float, torch.tensor]:
+    def train(
+        self,
+        iteration: int,
+        epoch: int
+        ) -> tuple[float, torch.tensor]:
         """Train the network and computes loss and accuracy.
         
         Parameters
@@ -534,8 +543,10 @@ class FederatedModel:
             )
 
 
-    def transform_func(self,
-                       data):
+    def transform_func(
+        self,
+        data
+        ):
         convert_tensor = transforms.ToTensor()
         data['image'] = [convert_tensor(img) for img in data['image']]
         return data
