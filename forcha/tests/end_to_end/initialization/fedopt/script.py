@@ -21,7 +21,7 @@ def simulation():
                           central_lr=0.5,
                           local_epochs=2,
                           batch_size=32,
-                          force_cpu=True)
+                          force_cpu=False)
     
     settings = init_settings(
          orchestrator_type='fed_opt',

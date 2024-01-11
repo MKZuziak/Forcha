@@ -57,7 +57,8 @@ class MCFL_Orchestrator(Orchestrator):
 
 
     def train_protocol(self,
-                       transition_matrix) -> None:
+                       transition_matrices,
+                       group_probabilities) -> None:
         """"Performs a full federated training according to the initialized
         settings. The train_protocol of the fedopt.orchestrator.Fedopt_Orchestrator
         follows a popular FedAvg generalisation, FedOpt. Instead of weights from each
@@ -82,10 +83,14 @@ class MCFL_Orchestrator(Orchestrator):
         self.Optimizer = Optimizers(weights = self.central_model.get_weights(),
                                     settings=optimizer_settings)
 
-
+        # ASSIGNING GROUPS
+        groups = self.generator.choice(a=range(len(group_probabilities)), size=len(self.network), p=group_probabilities, replace=True)
+        
+        
         # LOADING TRANSITION MATRIX
         for node in self.network:
-            node.load_transition_matrix(transition_matrix = transition_matrix)
+            node.group = groups[node.id]
+            node.load_transition_matrix(transition_matrix = transition_matrices[node.group])
             
         
         # TRAINING PHASE ----- FEDOPT

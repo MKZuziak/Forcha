@@ -80,12 +80,6 @@ class Fedopt_Orchestrator(Orchestrator):
         
             # Checking for connectivity
             connected_nodes = [node for node in self.network]
-            if len(connected_nodes) < self.sample_size:
-                self.orchestrator_logger.warning(f"Not enough connected nodes to draw a full sample! Skipping an iteration {iteration}")
-                continue
-            else:
-                self.orchestrator_logger.info(f"Nodes connected at round {iteration}: {[node.node_id for node in connected_nodes]}")
-            
             # Weights dispatched before the training (if activated)
             if self.settings.dispatch_model:
                 for node in connected_nodes:
@@ -132,6 +126,10 @@ class Fedopt_Orchestrator(Orchestrator):
                 self.archive_manager.archive_training_results(
                     iteration = iteration,
                     results=training_results
+                )
+                self.archive_manager.archive_local_test_results(
+                    iteration = iteration,
+                    nodes = sampled_nodes
                 )
                         
             updated_weights = self.Optimizer.fed_optimize(weights=copy.deepcopy(self.central_model.get_weights()),

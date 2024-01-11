@@ -42,6 +42,7 @@ class Archive_Manager():
         if logger != None:
             self.logger = logger
     
+    
     def archive_training_results(
         self,
         iteration: int,
@@ -51,6 +52,28 @@ class Archive_Manager():
             Handler.save_training_metrics(file=results,
                                   saving_path = self.metrics_savepath,
                                   file_name = 'training_metrics.csv')
+    
+    
+    def archive_local_test_results(
+        self,
+        nodes:list,
+        iteration: int
+        ):
+        if self.central_on_local:
+            if self.save_results:
+                for node in nodes:
+                    Handler.save_model_metrics(iteration = iteration,
+                                                model = node.model,
+                                                logger = self.logger,
+                                                saving_path = self.metrics_savepath,
+                                                log_to_screen = True,
+                                                file_name='testing_metrics.csv') # PRESERVING METRICS FUNCTION -> CHANGE IF NEEDED
+            elif self.only_log:
+                for node in nodes:
+                    Handler.log_model_metrics(iteration = iteration,
+                                                model = node.model,
+                                                logger = self.logger)
+                
     
     
     def archive_testing_results(

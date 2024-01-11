@@ -112,9 +112,11 @@ class Handler:
     
     
     @staticmethod
-    def save_csv_file(file,
-                      saving_path: str = None,
-                      file_name: str = 'metrics.csv') -> None:
+    def save_csv_file(
+        file,
+        saving_path: str = None,
+        file_name: str = 'custom_metrics.csv'
+        ) -> None:
         """Used to preserve the content of a csv file."""
         path = os.path.join(saving_path, file_name)
         with open(path, 'a+', newline='') as csv_file:
@@ -125,9 +127,11 @@ class Handler:
     
     
     @staticmethod
-    def save_training_metrics(file,
-                              saving_path: str = None,
-                              file_name: str = 'metrics.csv') -> None:
+    def save_training_metrics(
+        file,
+        saving_path: str = None,
+        file_name: str = 'metrics.csv'
+        ) -> None:
         """Used to preserve the content of a csv file."""
         path = os.path.join(saving_path, file_name)
         with open(path, 'a+', newline='') as csv_file:
@@ -136,4 +140,14 @@ class Handler:
                 writer.writeheader()
             for row in file.values():
                 writer.writerow(row)
+    
+    
+    @staticmethod
+    def execute_local_test(
+        file,
+        saving_path: str = None,
+        file_name: str = "local_tests.csv"
+        ) -> None:
+        pass
+    
             
