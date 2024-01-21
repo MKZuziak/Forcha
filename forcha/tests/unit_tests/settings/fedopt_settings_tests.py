@@ -1,6 +1,5 @@
 import unittest
 from forcha.components.settings.fedopt_settings import FedoptSettings
-import time
 
 class TestSettingsClass(unittest.TestCase):
 

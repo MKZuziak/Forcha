@@ -13,6 +13,7 @@ from sklearn.metrics import f1_score, recall_score, confusion_matrix, precision_
 import os
 from forcha.exceptions.modelexception import ModelException
 from forcha.utils.loggers import Loggers
+from forcha.components.settings.settings import Settings
 
 model_logger = Loggers.model_logger()
 
@@ -25,7 +26,7 @@ class FederatedModel:
     """
     def __init__(
         self,
-        settings: dict,
+        settings: Settings,
         net: nn.Module,
         local_dataset: list[arrow_dataset.Dataset, arrow_dataset.Dataset] | list[arrow_dataset.Dataset],
         node_name: int
@@ -49,23 +50,17 @@ class FederatedModel:
         None
         """
         # FORCE CPU IF ENABLED
-        force_cpu = settings.get('FORCE_CPU')
-        if force_cpu == True:
+        if hasattr(settings, 'force_gpu'):
             self.device = torch.device('cpu')
         else:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.cpu = torch.device("cpu")
         self.initial_model = None
-        self.optimizer: optim.Optimizer = None
-        
-        # Checks for all the necessary elements:
-        assert settings, "Could not find settings, please ensure that a valid dictionary containing settings was passed in a function call."
-        assert net, "Could not find net object, please ensure that a valid nn.Module was passed in a function call."
-        assert local_dataset, "Could not find local dataset that should be used with that model. Pleasure ensure that local dataset was passed in a function call."
-        
+        self.optimizer = None  
         self.net = copy.deepcopy(net) # Do we need to create a deepcopy?
         self.settings = settings
         self.node_name = node_name
+        
         # If both, train and test data were provided
         if len(local_dataset) == 2:
             self.trainloader, self.testloader = self.prepare_data(local_dataset)
@@ -73,7 +68,7 @@ class FederatedModel:
         elif len(local_dataset) == 1:
             self.testloader = self.prepare_data(local_dataset, only_test=True)
         else:
-            raise "The provided dataset object seem to be wrong. Please provide list[train_set, test_set] or list[test_set]"
+            raise ModelException("The provided dataset object seem to be wrong. Please provide list[train_set, test_set] or list[test_set]")
 
         # List containing all the parameters to update
         params_to_update = []
@@ -81,57 +76,59 @@ class FederatedModel:
             if param.requires_grad is True:
                 params_to_update.append(param)
 
+
         # Choosing an optimizer based on settings
         # ADAM
-        if self.settings['optimizer'] == "Adam":
-            if settings.get('betas'):
-                betas = settings['betas']
+        if self.settings.optimizer == "Adam":
+            if hasattr(self.settings, 'adam_betas'):
+                betas = settings.adam_betas
             else:
                 betas = (0.9, 0.999)
             
-            if settings.get('weight-decay'):
-                weight_decay = settings['weight_decay']
+            if hasattr(self.settings, 'weight_decay'):
+                weight_decay = settings.weight_decay
             else:
                 weight_decay = 0
 
-            if settings.get('amsgrad'):
-                amsgrad = settings['amsgrad']
+            if hasattr(self.settings, 'amsgrad'):
+                amsgrad = True
             else:
                 amsgrad = False
             
             self.optimizer = optim.Adam(
                 params_to_update,
-                lr = self.settings['learning_rate'],
+                lr = self.settings.learning_rate,
                 betas=betas,
                 weight_decay=weight_decay,
                 amsgrad=amsgrad
             )
         
+        
         # SGD
-        elif self.settings['optimizer'] == "SGD":
-            if settings.get('momentum'):
-                momentum = settings['momentum']
+        elif self.settings.optimizer == "SGD":
+            if hasattr(self.settings, momentum):
+                momentum = settings.momentum
             else:
                 momentum = 0
             
-            if settings.get('weight-decay'):
-                weight_decay = settings['weight_decay']
+            if hasattr(self.settings, 'weight_decay'):
+                weight_decay = settings.weight_decay
             else:
                 weight_decay = 0
 
-            if settings.get('dampening'):
-                dampening = settings['dampening']
+            if hasattr(self.settings, 'dampening'):
+                dampening = settings.dampening
             else:
                 dampening = 0
 
-            if settings.get('nesterov'):
-                nesterov = settings['nesterov']
+            if hasattr(self.settings, 'nesterov'):
+                nesterov = settings.nesterov
             else:
                 nesterov = False
             
             self.optimizer = optim.SGD(
                 params_to_update,
-                lr = self.settings['learning_rate'],
+                lr = self.settings.learning_rate,
                 momentum=momentum,
                 weight_decay=weight_decay,
                 dampening=dampening,
@@ -139,22 +136,23 @@ class FederatedModel:
             )
         
         
-        elif self.settings['optimizer'] == "RMS":
-            if settings.get('momentum'):
-                momentum = settings['momentum']
+        # RMS
+        elif self.settings.optimizer == "RMS":
+            if hasattr(self.settings, 'momentum'):
+                momentum = settings.momentum
             else:
                 momentum = 0
-            if settings.get('alpha'):
-                alpha = settings['alpha']
+            if hasattr(self.settings, 'alpha'):
+                alpha = settings.alpha
             else:
                 alpha = 0.99
-            if settings.get('weight-decay'):
-                weight_decay = settings['weight_decay']
+            if hasattr(self.settings, 'weight_decay'):
+                weight_decay = settings.weight_decay
             else:
                 weight_decay = 0
             self.optimizer = optim.RMSprop(
                 params_to_update,
-                lr=self.settings["learning_rate"],
+                lr=self.settings.learning_rate,
                 alpha=alpha,
                 weight_decay=weight_decay)
         else:
@@ -185,7 +183,7 @@ class FederatedModel:
         if only_test == False:
             local_dataset[0] = local_dataset[0].with_transform(self.transform_func)
             local_dataset[1] = local_dataset[1].with_transform(self.transform_func)
-            batch_size = self.settings["batch_size"]
+            batch_size = self.settings.batch_size
             trainloader = torch.utils.data.DataLoader(
                 local_dataset[0],
                 batch_size=batch_size,
@@ -212,25 +210,31 @@ class FederatedModel:
             return testloader
 
 
-    def print_data_stats(
-        self, 
-        trainloader: torch.utils.data.DataLoader
-        ) -> None: #TODO
-        """Debug function used to print stats about the loaded datasets.
+    def print_model_footprint(self) -> None:
+        """Prints all the information about the model..
         Args:
-            trainloader (torch.utils.data.DataLoader): training set
         """
-        num_examples = {
-            "trainset": len(self.training_set),
-            "testset": len(self.test_set),
-        }
-        targets = []
-        for _, data in enumerate(trainloader, 0):
-            targets.append(data[1])
-        targets = [item.item() for sublist in targets for item in sublist]
-        model_logger.info(f"{self.node_name}, {Counter(targets)}")
-        model_logger.info(f"{self.node_name}: Training set size: {num_examples['trainset']}")
-        model_logger.info(f"{self.node_name}: Test set size: {num_examples['testset']}")
+        unique_hash = hash(next(iter(self.trainloader))['image'] + self.node_name)
+        
+        string = f"""
+        model id: {self.node_name}
+        device: {self.device},
+        optimizer: {self.optimizer},
+        unique hash: {unique_hash}
+        """
+        return (self.node_name, self.device, self.optimizer, unique_hash)
+        
+        # num_examples = {
+        #     "trainset": len(self.training_set),
+        #     "testset": len(self.test_set),
+        # }
+        # targets = []
+        # for _, data in enumerate(trainloader, 0):
+        #     targets.append(data[1])
+        # targets = [item.item() for sublist in targets for item in sublist]
+        # model_logger.info(f"{self.node_name}, {Counter(targets)}")
+        # model_logger.info(f"{self.node_name}: Training set size: {num_examples['trainset']}")
+        # model_logger.info(f"{self.node_name}: Test set size: {num_examples['testset']}")
 
 
     def get_weights_list(self) -> list[float]:
