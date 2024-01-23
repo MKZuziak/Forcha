@@ -43,9 +43,9 @@ class Settings():
         self.optimizer = optimizer
         self.batch_size = batch_size
         self.learning_rate = learning_rate
-        self.save_nodes_models: bool = save_nodes_models
-        self.save_central_model: bool = save_central_model
-        self.save_training_metrics: bool = save_training_metrics
+        self.save_nodes_models = save_nodes_models
+        self.save_central_model = save_central_model
+        self.save_training_metrics = save_training_metrics
 
         self.orchestrator_model_path, self.nodes_model_path, self.results_path = self.form_archive()
         for k in kwargs.keys():
