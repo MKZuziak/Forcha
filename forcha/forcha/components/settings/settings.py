@@ -12,6 +12,9 @@ class Settings():
                 optimizer: str = 'RMS',
                 batch_size: int = 32,
                 learning_rate: float = 0.01,
+                save_nodes_models: bool = False,
+                save_central_model: bool = False,
+                save_training_metrics: bool = True,
                 **kwargs) -> None:
         """Initialization of an instance of the Settings object. Requires choosing the initialization method.
         Can be initialized either from a dictionary containing all the relevant key-words or from the 
@@ -31,7 +34,7 @@ class Settings():
         -------
         None
         """
-        acceptable_keys_list = ['momentum', 'nesterov']
+        acceptable_keys_list = ['momentum', 'nesterov', 'force_cpu']
         self.simulation_seed = simulation_seed
         self.global_epochs = global_epochs
         self.local_epochs = local_epochs
@@ -40,6 +43,9 @@ class Settings():
         self.optimizer = optimizer
         self.batch_size = batch_size
         self.learning_rate = learning_rate
+        self.save_nodes_models: bool = save_nodes_models
+        self.save_central_model: bool = save_central_model
+        self.save_training_metrics: bool = save_training_metrics
 
         self.orchestrator_model_path, self.nodes_model_path, self.results_path = self.form_archive()
         for k in kwargs.keys():

@@ -50,7 +50,7 @@ class FederatedModel:
         None
         """
         # FORCE CPU IF ENABLED
-        if hasattr(settings, 'force_gpu'):
+        if hasattr(settings, 'force_cpu'):
             self.device = torch.device('cpu')
         else:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -106,7 +106,7 @@ class FederatedModel:
         
         # SGD
         elif self.settings.optimizer == "SGD":
-            if hasattr(self.settings, momentum):
+            if hasattr(self.settings, 'momentum'):
                 momentum = settings.momentum
             else:
                 momentum = 0

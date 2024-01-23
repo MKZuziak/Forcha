@@ -13,6 +13,9 @@ class FedoptSettings(Settings):
                  global_optimizer: str = 'Simple',
                  global_learning_rate: float = 1.0,
                  learning_rate: float = 0.01,
+                 save_nodes_models: bool = False,
+                 save_central_model: bool = False,
+                 save_training_metrics: bool = True,
                  b1: float = 0,
                  b2: float = 0,
                  tau: float = 0,
@@ -45,6 +48,9 @@ class FedoptSettings(Settings):
             optimizer = optimizer,
             batch_size = batch_size,
             learning_rate = learning_rate,
+            save_nodes_models = save_nodes_models,
+            save_central_model = save_central_model,
+            save_training_metrics = save_training_metrics
             **kwargs
         )
         self.global_optimizer = global_optimizer

@@ -5,10 +5,10 @@ from forcha.models.federated_model import FederatedModel
 from forcha.utils.computations import Aggregators
 from forcha.utils.loggers import Loggers
 from forcha.utils.orchestrations import create_nodes, check_health, sample_nodes, train_nodes
-from forcha.components.archiver.archive_manager import Archive_Manager
 from forcha.components.settings.settings import Settings
 from forcha.utils.debugger import log_gpu_memory
 from forcha.utils.helpers import Helpers
+from forcha.utils.handlers import save_csv_file, save_model_metrics, save_training_metrics
 import numpy as np
 from multiprocessing import Pool
 from torch import nn
@@ -93,7 +93,7 @@ class Orchestrator():
         self.orchestrator_logger = Loggers.orchestrator_logger()
         
         # Initialization of the generator object    
-        self.generator = np.random.default_rng(self.settings.seed)
+        self.generator = np.random.default_rng(self.settings.simulation_seed)
     
     
     def prepare_orchestrator(self, 
@@ -117,96 +117,96 @@ class Orchestrator():
         self.validation_data = [validation_data]
         self.central_net = model
         self.central_model = FederatedModel(
-            settings = self.settings.model_settings,
+            settings = self.settings,
             net=model,
             local_dataset=self.validation_data,
             node_name='orchestrator')
     
 
-    def model_initialization(self,
-                             nodes_number: int,
-                             model: Union[nn.Module, list[nn.Module]],
-                             local_warm_start: bool = False,
-                             ) -> list[nn.Module]:
-        """Creates a list of neural nets (not FederatedModels) that will be
-        passed onto the nodes and converted into FederatedModels. If local_warm_start
-        is set to True, the method call should be passed a list of models which
-        length is equall to the number of nodes.
+    # def model_initialization(self,
+    #                          nodes_number: int,
+    #                          model: Union[nn.Module, list[nn.Module]],
+    #                          local_warm_start: bool = False,
+    #                          ) -> list[nn.Module]:
+    #     """Creates a list of neural nets (not FederatedModels) that will be
+    #     passed onto the nodes and converted into FederatedModels. If local_warm_start
+    #     is set to True, the method call should be passed a list of models which
+    #     length is equall to the number of nodes.
         
-        Parameters
-        ----------
-        nodes_number: int 
-            number of nodes that will participate in the training.
-        model: Union[nn.Module, list[nn.Module]] 
-            a neural net schematic (if warm start is set to False) or 
-            a number of different neural net schematics
-            (if warm start is set to True) that 
-            are prepared for the nodes to be loaded as FederatedModels.
-        local_warm_start: bool, default False
-            boolean value for switching on/off the warm start utility.
+    #     Parameters
+    #     ----------
+    #     nodes_number: int 
+    #         number of nodes that will participate in the training.
+    #     model: Union[nn.Module, list[nn.Module]] 
+    #         a neural net schematic (if warm start is set to False) or 
+    #         a number of different neural net schematics
+    #         (if warm start is set to True) that 
+    #         are prepared for the nodes to be loaded as FederatedModels.
+    #     local_warm_start: bool, default False
+    #         boolean value for switching on/off the warm start utility.
         
-        Returns
-        -------
-        list[nn.Module]
-            returns a list containing an instances of torch.nn.Module class.
+    #     Returns
+    #     -------
+    #     list[nn.Module]
+    #         returns a list containing an instances of torch.nn.Module class.
         
-        Raises
-        ------
-        NotImplemenetedError
-            If local_warm_start is set to True.
-        """
-        if local_warm_start == True:
-            raise NotImplementedError("Local warm start is not implemented yet.")
-        else:
-            # Deep copy is nec. because the models will have different (non-shared) parameters
-            model_list = [copy.deepcopy(model) for _ in range(nodes_number)]
-        return model_list
+    #     Raises
+    #     ------
+    #     NotImplemenetedError
+    #         If local_warm_start is set to True.
+    #     """
+    #     if local_warm_start == True:
+    #         raise NotImplementedError("Local warm start is not implemented yet.")
+    #     else:
+    #         # Deep copy is nec. because the models will have different (non-shared) parameters
+    #         model_list = [copy.deepcopy(model) for _ in range(nodes_number)]
+    #     return model_list
 
 
-    def nodes_initialization(self,
-                             nodes_list: list[FederatedNode],
-                             model_list: list[nn.Module],
-                             data_list: list[datasets.arrow_dataset.Dataset, datasets.arrow_dataset.Dataset]
-                             ) -> list[FederatedNode]:
-        """Prepare instances of a FederatedNode object for a participation in 
-        the Federated Training.  Contrary to the 'create nodes' function, 
-        it accepts only already initialized instances of the FederatedNode
-        object.
+    # def nodes_initialization(self,
+    #                          nodes_list: list[FederatedNode],
+    #                          model_list: list[nn.Module],
+    #                          data_list: list[datasets.arrow_dataset.Dataset, datasets.arrow_dataset.Dataset]
+    #                          ) -> list[FederatedNode]:
+    #     """Prepare instances of a FederatedNode object for a participation in 
+    #     the Federated Training.  Contrary to the 'create nodes' function, 
+    #     it accepts only already initialized instances of the FederatedNode
+    #     object.
 
-        Parameters
-        ----------
-        nodess_list: list[FederatedNode] 
-            The list containing all the initialized FederatedNode instances.
-        model_list: list[nn.Module] 
-            The list containing all the initialized nn.Module objects. 
-            Note that conversion from nn.Module into the FederatedModel will occur 
-            at the local node level.
-        data_list (list[..., ....]): 
-            The list containing train set and test set 
-            wrapped in a hugging facr arrow_dataset.Dataset containers.
+    #     Parameters
+    #     ----------
+    #     nodess_list: list[FederatedNode] 
+    #         The list containing all the initialized FederatedNode instances.
+    #     model_list: list[nn.Module] 
+    #         The list containing all the initialized nn.Module objects. 
+    #         Note that conversion from nn.Module into the FederatedModel will occur 
+    #         at the local node level.
+    #     data_list (list[..., ....]): 
+    #         The list containing train set and test set 
+    #         wrapped in a hugging facr arrow_dataset.Dataset containers.
         
-        Returns
-        -------
-        list[FederatedNode]
+    #     Returns
+    #     -------
+    #     list[FederatedNode]
         
-        Raises
-        ------
-        """
+    #     Raises
+    #     ------
+    #     """
         
-        results = []
-        for node, model, dataset in zip(nodes_list, model_list, data_list):
-            node.prepare_node(
-                model = model, 
-                data = dataset,
-                save_model = self.settings.archiver_settings['save_nodes_model'],
-                save_path = self.settings.archiver_settings['nodes_model_savepath']
-                )
-            results.append(node)
-        nodes_green = []
-        for result in results:
-            if check_health(result, orchestrator_logger=self.orchestrator_logger):
-                nodes_green.append(result)
-        return nodes_green # Returning initialized nodes
+    #     results = []
+    #     for node, model, dataset in zip(nodes_list, model_list, data_list):
+    #         node.prepare_node(
+    #             model = model, 
+    #             data = dataset,
+    #             save_model = self.settings.archiver_settings['save_nodes_model'],
+    #             save_path = self.settings.archiver_settings['nodes_model_savepath']
+    #             )
+    #         results.append(node)
+    #     nodes_green = []
+    #     for result in results:
+    #         if check_health(result, orchestrator_logger=self.orchestrator_logger):
+    #             nodes_green.append(result)
+    #     return nodes_green # Returning initialized nodes
     
     
     def prepare_training(self,
@@ -226,37 +226,32 @@ class Orchestrator():
         None
         """
         
-        self.iterations = self.settings.iterations
+        self.iterations = self.settings.global_epochs
         self.nodes_number = self.settings.number_of_nodes
-        self.local_warm_start = self.settings.local_warm_start
         self.sample_size = self.settings.sample_size
-        self.nodes = [node for node in range(self.nodes_number)]
-        self.enable_archiver = self.settings.enable_archiver
+        self.nodes_list = [node for node in range(self.nodes_number)]
         
-        # Initializing an instance of the Archiver class if enabled in the settings.
-        if self.enable_archiver:
-            self.archive_manager = Archive_Manager(
-                archive_manager = self.settings.archiver_settings,
-                logger = self.orchestrator_logger
-            )
+        # # Initializing an instance of the Archiver class if enabled in the settings.
+        # if self.enable_archiver:
+        #     self.archive_manager = Archive_Manager(
+        #         archive_manager = self.settings.archiver_settings,
+        #         logger = self.orchestrator_logger
+        #     )
         
         # Creating nodes
         # Creating (empty) federated nodes
-        self.nodes_green = create_nodes(
-            self.nodes,
-            self.settings.nodes_settings
-            )
+        model_list = [copy.deepcopy(self.central_net) for _ in range(self.nodes_number)]
+        nodes = [FederatedNode(node_id, 
+                                    self.settings,
+                                    model=model,
+                                    data=node_data,
+                                    save_model=self.settings.save_nodes_models,
+                                    save_path=self.settings.nodes_model_path,
+                                    seed=self.settings.simulation_seed) 
+                      for node_id, model, node_data in zip(self.nodes_list, model_list, nodes_data)]
         
-        self.model_list = self.model_initialization(
-            nodes_number=self.nodes_number,
-            model=self.central_net
-            )
         
-        self.network = self.nodes_initialization(
-            nodes_list=self.nodes_green,
-            model_list=self.model_list,
-            data_list=nodes_data
-            )
+        self.network = nodes
     
     
     def update_connectivity(self,
@@ -297,17 +292,16 @@ class Orchestrator():
             else:
                 self.orchestrator_logger.info(f"Nodes connected at round {iteration}: {[node.node_id for node in connected_nodes]}")
             
-            # Weights dispatched before the training (if activated)
-            if self.settings.dispatch_model:
-                self.orchestrator_logger.info(f"Iteration {iteration}, dispatching nodes to connected clients.")
-                for node in connected_nodes:
-                    node.model.update_weights(copy.deepcopy(self.central_model.get_weights()))
+            # Weights dispatched before the training
+            self.orchestrator_logger.info(f"Iteration {iteration}, dispatching nodes to connected clients.")
+            for node in connected_nodes:
+                node.model.update_weights(copy.deepcopy(self.central_model.get_weights()))
             
             # Sampling nodes and asynchronously apply the function
             sampled_nodes = sample_nodes(
-                connected_nodes, 
-                sample_size=self.sample_size,
-                generator=self.generator
+                nodes = connected_nodes, 
+                sample_size = self.sample_size,
+                generator = self.generator
                 ) # SAMPLING FUNCTION
             # FEDAVG - TRAINING PHASE
             # OPTION: BATCH TRAINING
@@ -323,7 +317,8 @@ class Orchestrator():
                                 "iteration": iteration,
                                 "node_id": node_id,
                                 "loss": loss_list[-1], 
-                                "accuracy": accuracy_list[-1]}
+                                "accuracy": accuracy_list[-1]
+                                }
             # OPTION: NON-BATCH TRAINING
             else:
                 with Pool(self.sample_size) as pool:
@@ -337,12 +332,24 @@ class Orchestrator():
                                 "loss": loss_list[-1], 
                                 "accuracy": accuracy_list[-1]
                                 }
-            # ARCHIVER: PRESERVING TRAINING ON NODES RESULTS
-            if self.enable_archiver == True:
-                self.archive_manager.archive_training_results(
-                    iteration = iteration,
-                    results=training_results
-                )
+            # TRAINING AND TESTING RESULTS BEFORE THE MODEL UPDATE
+            # METRICS: PRESERVING TRAINING ON NODES RESULTS
+            if self.settings.save_training_metrics:
+                save_training_metrics(
+                    file = training_results,
+                    saving_path = self.settings.results_path,
+                    file_name = "training_metrics.csv"
+                    )
+            # METRICS: TEST RESULTS ON NODES (TRAINED MODEL)
+                for node in sampled_nodes:
+                    save_model_metrics(
+                        iteration = iteration,
+                        model = node.model,
+                        logger = self.orchestrator_logger,
+                        saving_path = self.settings.results_path,
+                        file_name = 'local_model_on_nodes.csv'
+                        )
+                    
             # FEDAVG: AGGREGATING FUNCTION
             avg = Aggregators.compute_average(weights) # AGGREGATING FUNCTION
             # FEDAVG: UPDATING THE NODES
@@ -351,12 +358,23 @@ class Orchestrator():
             # FEDAVG: UPDATING THE CENTRAL MODEL 
             self.central_model.update_weights(copy.deepcopy(avg))
 
-            # ARCHIVER: PRESERVING RESULTS
-            if self.enable_archiver == True:
-                self.archive_manager.archive_testing_results(
+            # TESTING RESULTS AFTER THE MODEL UPDATE
+            if self.settings.save_training_metrics:
+                save_model_metrics(
                     iteration = iteration,
-                    central_model=self.central_model,
-                    nodes=connected_nodes)
+                    model = self.central_model,
+                    logger = self.orchestrator_logger,
+                    saving_path = self.settings.results_path,
+                    file_name = "global_model_on_orchestrator.csv"
+                )
+                for node in connected_nodes:
+                    save_model_metrics(
+                        iteration = iteration,
+                        model = node.model,
+                        logger = self.orchestrator_logger,
+                        saving_path = self.settings.results_path,
+                        file_name = "global_model_on_nodes.csv")
+                            
             if self.full_debug == True:
                 log_gpu_memory(iteration=iteration)
 

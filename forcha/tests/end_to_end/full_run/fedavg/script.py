@@ -4,35 +4,32 @@ according to predefined schema. During the training, three contribution metrics 
 
 import pickle
 import os
+import datasets
 from forcha.components.orchestrator.generic_orchestrator import Orchestrator
-from forcha.templates.generate_template import basic_fedavg
-from forcha.components.settings.init_settings import init_settings
-from forcha.models.templates.mnist import MNIST_Expanded_CNN
+from forcha.components.settings.settings import Settings
+from forcha.models.templates.fmnist import create_FashionMnistNet
 
 def simulation():
     cwd = os.getcwd()
-    config = basic_fedavg(iterations=40,
-                          number_of_nodes=20,
-                          sample_size=10,
-                          root_path=cwd,
-                          local_lr=0.1,
-                          local_epochs=2,
-                          batch_size=32,
-                          force_cpu=False)
+    settings = Settings(simulation_seed=42,
+                        global_epochs=20,
+                        local_epochs=3,
+                        number_of_nodes=5,
+                        sample_size=3,
+                        optimizer='SGD',
+                        batch_size=32,
+                        learning_rate=0.01,
+                        force_cpu=True)
     
-    settings = init_settings(
-         orchestrator_type='general',
-         initialization_method='dict',
-         dict_settings = config,
-         allow_default=True)
-    
-    with open(r'/home/mzuziak/snap/snapd-desktop-integration/83/Documents/Forcha/forcha/tests/end_to_end/datasets/dataset_2/FMNIST_20_dataset_pointers', 'rb') as path:
-        data = pickle.load(path)
+    # with open(r'/home/mzuziak/snap/snapd-desktop-integration/83/Documents/Forcha/forcha/tests/end_to_end/datasets/dataset_2/FMNIST_20_dataset_pointers', 'rb') as path:
+    #     data = pickle.load(path)
+    with open(f'/home/mzuziak/snap/snapd-desktop-integration/83/Documents/Forcha/forcha/tests/end_to_end/datasets/dataset_2/FMNIST_20_dataset_pointers', 'rb') as file:
+        data = pickle.load(file)
     # DATA: Selecting data for the orchestrator
     orchestrator_data = data[0]
     # DATA: Selecting data for nodes
     nodes_data = data[1]
-    model = MNIST_Expanded_CNN()
+    model = create_FashionMnistNet()
     orchestrator = Orchestrator(settings=settings, full_debug=True)
     
     orchestrator.prepare_orchestrator(
