@@ -50,7 +50,7 @@ class FedoptSettings(Settings):
             learning_rate = learning_rate,
             save_nodes_models = save_nodes_models,
             save_central_model = save_central_model,
-            save_training_metrics = save_training_metrics
+            save_training_metrics = save_training_metrics,
             **kwargs
         )
         self.global_optimizer = global_optimizer
