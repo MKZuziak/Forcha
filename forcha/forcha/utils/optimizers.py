@@ -13,19 +13,19 @@ class Optimizers():
         # data placed on CPU and GPU.
         self.previous_delta = OrderedDict((key, rand(weights[key].size())) for key in weights.keys())
         self.previous_momentum = OrderedDict((key, rand(weights[key].size())) for key in weights.keys())
-        self.optimizer = settings['name']
-        self.learning_rate = torch.tensor(settings['learning_rate'])
+        self.optimizer = settings.global_optimizer
+        self.learning_rate = torch.tensor(settings.global_learning_rate)
 
         # Selecting a proper centralised optimizer and placing all the tensors on the same device.
         if self.optimizer == 'Simple':
             pass
         elif self.optimizer == "FedAdagard":
-            self.b1 = torch.tensor(settings['b1'])
-            self.tau = torch.tensor(settings['tau'])
+            self.b1 = torch.tensor(settings.b1)
+            self.tau = torch.tensor(settings.tau)
         elif self.optimizer == "FedYogi" or self.optimizer == "FedAdam":
-            self.b1 = torch.tensor(settings['b1'])
-            self.b2 = torch.tensor(settings['b2'])
-            self.tau = torch.tensor(settings['tau'])
+            self.b1 = torch.tensor(settings.b1)
+            self.b2 = torch.tensor(settings.b2)
+            self.tau = torch.tensor(settings.tau)
         else:
             "Wrong optimizer's name was provided. Unable to retrieve parameters!"
     

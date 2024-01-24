@@ -5,13 +5,18 @@ from datasets import arrow_dataset
 from forcha.models.federated_model import FederatedModel
 from forcha.utils.loggers import Loggers
 from forcha.utils.helpers import find_nearest
+from forcha.components.settings.settings import Settings
 
 node_logger = Loggers.node_logger()
 
 class FederatedNode:
     def __init__(self, 
                  node_id: int,
-                 settings: dict,
+                 settings: Settings,
+                 model: torch.nn.Module, 
+                 data: list[arrow_dataset.Dataset, arrow_dataset.Dataset],
+                 save_model: bool = False,
+                 save_path: str = None,
                  group: int = None,
                  seed: float | int = 42
                  ) -> None:
@@ -32,15 +37,26 @@ class FederatedNode:
         None
         """
         self.state = None # Attribute controlling the state of the object.
-        self.node_id = node_id
-        self.settings = settings
-        self.model = None
-        self.train_data = None
-        self.test_data = None
+        self.node_id = node_id # Attribute controlling the ID of the node.
+        self.settings = settings # Settings object attached to each node.
+        self.model = None # Model placeholder.
+        self.train_data = None # Trainining data placeholder.
+        self.test_data = None # Testing data placeholder.
         
         self.transition_matrix = None # Transition matrix, important for performing MCFL.
-        self.group = group
-        self.generator = default_rng(seed=(seed + node_id))
+        self.group = group # Group of the device.
+        self.generator = default_rng(seed=(seed + node_id)) # Generator attached to the node
+        self.train_data = data[0]
+        self.test_data = data[1]
+        self.save_model = save_model
+        self.save_path = save_path
+        self.model = FederatedModel(
+            settings=settings,
+            net = model,
+            local_dataset = data,
+            node_name=self.node_id
+        )
+        self.state = 0
             
             
     def load_transition_matrix(self,
@@ -70,50 +86,8 @@ class FederatedNode:
         ------------
         Returns:
             None"""
-        if self.transition_matrix.any():
-            self.state = self.generator.choice(a=self.states, p=self.transition_matrix[self.state, :])
-            node_logger.info(f"[ITERATION {iteration} | NODE {self.node_id}] transitioned to state {self.state}")
-        else:
-            self.state = 1
-        # TODO: Update the state accordingly
-
-
-    def prepare_node(self, 
-                     model: torch.nn.Module, 
-                     data: arrow_dataset.Dataset,
-                     save_model: bool = False,
-                     save_path: str = None
-                     ) -> None:
-        """Prepares node for the training, given the passed model 
-        and dataset.
-        
-        Parameters
-        ----------
-        model: nn.Module 
-            The Neural Network architecture that we want to use.
-        dsata: arrow_dataset.Dataset 
-            The local dataset that will be used with this set.
-        save_model: bool (default to False)
-            A boolean flag enabling to save model
-        save_path: str (default to None)
-            A path to the directory in which model should be saved.
-        
-        Returns
-        -------
-        None
-        """
-       
-        self.train_data = data[0]
-        self.test_data = data[1]
-        self.save_model = save_model
-        self.save_path = save_path
-        self.model = FederatedModel(
-            settings=self.settings["model_settings"],
-            net = model,
-            local_dataset = data,
-            node_name=self.node_id
-        )
-        self.state = 0
+        self.state = self.generator.choice(a=self.states, p=self.transition_matrix[self.state, :])
+        node_logger.info(f"[ITERATION {iteration} | NODE {self.node_id}] transitioned to state {self.state}")
 
 
     def train_local_model(self,
@@ -141,10 +115,11 @@ class FederatedNode:
         loss_list: list[float] = []
         accuracy_list: list[float] = []
 
-        local_epochs = self.settings['local_epochs']
-
+        local_epochs = self.settings.local_epochs
         if mode == 'gradients':
             self.model.preserve_initial_model()
+        
+        
         for epoch in range(local_epochs):
             metrics = self.local_training(
                 iteration=iteration, 

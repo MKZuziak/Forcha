@@ -1,6 +1,7 @@
 from forcha.components.settings.fedopt_settings import FedoptSettings
 from forcha.exceptions.settingexception import SettingsObjectException
 
+# TODO: THIS WAS NOT REFACTORED YET
 
 class Evaluator_Settings(FedoptSettings):
     def __init__(self, allow_default: bool, 

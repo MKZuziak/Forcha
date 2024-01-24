@@ -2,6 +2,7 @@ from forcha.components.settings.evaluator_settings import Evaluator_Settings
 from forcha.exceptions.settingexception import SettingsObjectException
 import numpy as np
 
+# TODO: THIS WAS NOT REFACTORED YET
 
 class Adjustive_Settings(Evaluator_Settings):
     def __init__(self, allow_default: bool, 
