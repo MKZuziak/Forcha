@@ -351,7 +351,7 @@ class Orchestrator():
                         )
                     
             # FEDAVG: AGGREGATING FUNCTION
-            avg = Aggregators.compute_average(weights) # AGGREGATING FUNCTION
+            avg = Aggregators.compute_average(copy.deepcopy(weights)) # AGGREGATING FUNCTION
             # FEDAVG: UPDATING THE NODES
             for node in connected_nodes:
                 node.model.update_weights(copy.deepcopy(avg))

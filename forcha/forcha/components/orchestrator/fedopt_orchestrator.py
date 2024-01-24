@@ -7,6 +7,7 @@ from forcha.components.settings.settings import Settings
 from forcha.utils.debugger import log_gpu_memory
 from forcha.utils.helpers import Helpers
 from multiprocessing import Pool
+from forcha.utils.handlers import save_csv_file, save_model_metrics, save_training_metrics
 
 
 # set_start_method set to 'spawn' to ensure compatibility across platforms.
@@ -67,10 +68,10 @@ class Fedopt_Orchestrator(Orchestrator):
             Returns 0 on the successful completion of the training.
         """
         # OPTIMIZER CLASS OBJECT
-        optimizer_settings = self.settings.optimizer_settings
-        self.Optimizer = Optimizers(weights = self.central_model.get_weights(),
-                                    settings=optimizer_settings)
-
+        self.Optimizer = Optimizers(
+            weights = self.central_model.get_weights(),
+            settings=self.settings
+            )
         # TRAINING PHASE ----- FEDOPT
         # FEDOPT - CREATE POOL OF WORKERS
         for iteration in range(self.iterations):
@@ -80,11 +81,16 @@ class Fedopt_Orchestrator(Orchestrator):
         
             # Checking for connectivity
             connected_nodes = [node for node in self.network]
-            # Weights dispatched before the training (if activated)
-            if self.settings.dispatch_model:
-                for node in connected_nodes:
-                    node.model.update_weights(copy.deepcopy(self.central_model.get_weights()))
-                self.orchestrator_logger.info(f"Iteration {iteration}, dispatching nodes to connected clients.")
+            if len(connected_nodes) < self.sample_size:
+                self.orchestrator_logger.warning(f"Not enough connected nodes to draw a full sample! Skipping an iteration {iteration}")
+                continue
+            else:
+                self.orchestrator_logger.info(f"Nodes connected at round {iteration}: {[node.node_id for node in connected_nodes]}")
+            
+            # Weights dispatched before the training
+            self.orchestrator_logger.info(f"Iteration {iteration}, dispatching nodes to connected clients.")
+            for node in connected_nodes:
+                node.model.update_weights(copy.deepcopy(self.central_model.get_weights()))            
             
             # Sampling nodes and asynchronously apply the function
             sampled_nodes = sample_nodes(
@@ -106,7 +112,8 @@ class Fedopt_Orchestrator(Orchestrator):
                                 "iteration": iteration,
                                 "node_id": node_id,
                                 "loss": loss_list[-1], 
-                                "accuracy": accuracy_list[-1]}
+                                "accuracy": accuracy_list[-1]
+                                }
             # OPTION: NON-BATCH TRAINING
             else:
                 with Pool(self.sample_size) as pool:
@@ -118,35 +125,56 @@ class Fedopt_Orchestrator(Orchestrator):
                                 "iteration": iteration,
                                 "node_id": node_id,
                                 "loss": loss_list[-1], 
-                                "accuracy": accuracy_list[-1]}
+                                "accuracy": accuracy_list[-1]
+                                }
+            # TRAINING AND TESTING RESULTS BEFORE THE MODEL UPDATE
+            # METRICS: PRESERVING TRAINING ON NODES RESULTS
+            if self.settings.save_training_metrics:
+                save_training_metrics(
+                    file = training_results,
+                    saving_path = self.settings.results_path,
+                    file_name = "training_metrics.csv"
+                    )
+            # METRICS: TEST RESULTS ON NODES (TRAINED MODEL)
+                for node in sampled_nodes:
+                    save_model_metrics(
+                        iteration = iteration,
+                        model = node.model,
+                        logger = self.orchestrator_logger,
+                        saving_path = self.settings.results_path,
+                        file_name = 'local_model_on_nodes.csv'
+                        )
+            
             # FEDOPT: AGGREGATING FUNCTION
             grad_avg = Aggregators.compute_average(copy.deepcopy(gradients)) # AGGREGATING FUNCTION
             # ARCHIVER: PRESERVING TRAINING ON NODES RESULTS
-            if self.enable_archiver == True:
-                self.archive_manager.archive_training_results(
-                    iteration = iteration,
-                    results=training_results
-                )
-                self.archive_manager.archive_local_test_results(
-                    iteration = iteration,
-                    nodes = sampled_nodes
-                )
                         
-            updated_weights = self.Optimizer.fed_optimize(weights=copy.deepcopy(self.central_model.get_weights()),
-                                                          delta=copy.deepcopy(grad_avg))
+            updated_weights = self.Optimizer.fed_optimize(
+                weights=copy.deepcopy(self.central_model.get_weights()),
+                delta=copy.deepcopy(grad_avg))
             # FEDOPT: UPDATING THE NODES
             for node in connected_nodes:
                 node.model.update_weights(copy.deepcopy(updated_weights))
             # FEDOPT: UPDATING THE CENTRAL MODEL 
             self.central_model.update_weights(copy.deepcopy(updated_weights))
-                   
-            # ARCHIVER: PRESERVING RESULTS
-            if self.enable_archiver == True:
-                self.archive_manager.archive_testing_results(
-                    iteration = iteration,
-                    central_model=self.central_model,
-                    nodes=connected_nodes)
             
+            # TESTING RESULTS AFTER THE MODEL UPDATE
+            if self.settings.save_training_metrics:
+                save_model_metrics(
+                    iteration = iteration,
+                    model = self.central_model,
+                    logger = self.orchestrator_logger,
+                    saving_path = self.settings.results_path,
+                    file_name = "global_model_on_orchestrator.csv"
+                )
+                for node in connected_nodes:
+                    save_model_metrics(
+                        iteration = iteration,
+                        model = node.model,
+                        logger = self.orchestrator_logger,
+                        saving_path = self.settings.results_path,
+                        file_name = "global_model_on_nodes.csv")
+                            
             if self.full_debug == True:
                 log_gpu_memory(iteration=iteration)
 
