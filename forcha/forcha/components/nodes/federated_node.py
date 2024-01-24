@@ -86,12 +86,8 @@ class FederatedNode:
         ------------
         Returns:
             None"""
-        if self.transition_matrix.any():
-            self.state = self.generator.choice(a=self.states, p=self.transition_matrix[self.state, :])
-            node_logger.info(f"[ITERATION {iteration} | NODE {self.node_id}] transitioned to state {self.state}")
-        else:
-            self.state = 1
-        # TODO: Update the state accordingly
+        self.state = self.generator.choice(a=self.states, p=self.transition_matrix[self.state, :])
+        node_logger.info(f"[ITERATION {iteration} | NODE {self.node_id}] transitioned to state {self.state}")
 
 
     def train_local_model(self,

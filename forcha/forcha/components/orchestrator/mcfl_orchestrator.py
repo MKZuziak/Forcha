@@ -6,6 +6,7 @@ from forcha.utils.orchestrations import sample_nodes, train_nodes
 from forcha.components.settings.settings import Settings
 from forcha.utils.debugger import log_gpu_memory
 from forcha.utils.helpers import Helpers
+from forcha.utils.handlers import save_csv_file, save_model_metrics, save_training_metrics
 from multiprocessing import Pool
 
 
@@ -79,30 +80,52 @@ class MCFL_Orchestrator(Orchestrator):
             Returns 0 on the successful completion of the training.
         """
         # OPTIMIZER CLASS OBJECT
-        optimizer_settings = self.settings.optimizer_settings
-        self.Optimizer = Optimizers(weights = self.central_model.get_weights(),
-                                    settings=optimizer_settings)
+        self.Optimizer = Optimizers(
+            weights = self.central_model.get_weights(),
+            settings=self.settings
+            )
 
         # ASSIGNING GROUPS
-        groups = self.generator.choice(a=range(len(group_probabilities)), size=len(self.network), p=group_probabilities, replace=True)
-        
-        
+        groups = self.generator.choice(
+            a=range(len(group_probabilities)), 
+            size=len(self.network), 
+            p=group_probabilities, 
+            replace=True
+            )
+
         # LOADING TRANSITION MATRIX
         for node in self.network:
-            node.group = groups[node.id]
+            node.group = groups[node.node_id]
             node.load_transition_matrix(transition_matrix = transition_matrices[node.group])
             
-        
         # TRAINING PHASE ----- FEDOPT
         # FEDOPT - CREATE POOL OF WORKERS
         for iteration in range(self.iterations):
             self.orchestrator_logger.info(f"Iteration {iteration}")
             gradients = {}
             training_results = {}
+            network_status = {}
             
-            self.check_status(list_of_nodes=self.network,
-                              iteration=iteration)        
-            # Checking for connectivity
+            # MCFL - UPDATE STATUS OF THE NETWORK
+            self.check_status(
+                list_of_nodes=self.network,
+                iteration=iteration
+                )
+            #MCFL - saving state of the network
+            for node in self.network:
+                network_status[node.node_id] = {
+                    "iteration": iteration,
+                    "node_id": node.node_id,
+                    "group_id": node.group,
+                    "state": node.state
+                }
+            save_training_metrics(
+                file=network_status,
+                saving_path=self.settings.results_path,
+                file_name='network_status.csv'
+            )
+            
+            # MCFL - CHECKING FOR CONNECTIVITY
             connected_nodes = [node for node in self.network if node.state == 1 or node.state == 2]
             if len(connected_nodes) < self.sample_size:
                 self.orchestrator_logger.warning(f"Not enough connected nodes to draw a full sample! Skipping an iteration {iteration}")
@@ -111,10 +134,9 @@ class MCFL_Orchestrator(Orchestrator):
                 self.orchestrator_logger.info(f"Nodes connected at round {iteration}: {[node.node_id for node in connected_nodes]}")
             
             # Weights dispatched before the training (if activated)
-            if self.settings.dispatch_model:
-                for node in connected_nodes:
-                    node.model.update_weights(copy.deepcopy(self.central_model.get_weights()))
-                self.orchestrator_logger.info(f"Iteration {iteration}, dispatching nodes to connected clients.")
+            for node in connected_nodes:
+                node.model.update_weights(copy.deepcopy(self.central_model.get_weights()))
+            self.orchestrator_logger.info(f"Iteration {iteration}, dispatching nodes to connected clients.")
             
             # Sampling nodes and asynchronously apply the function
             sampled_nodes = sample_nodes(
@@ -140,7 +162,8 @@ class MCFL_Orchestrator(Orchestrator):
                                     "iteration": iteration,
                                     "node_id": node_id,
                                     "loss": loss_list[-1], 
-                                    "accuracy": accuracy_list[-1]}
+                                    "accuracy": accuracy_list[-1]
+                                    }
                 # OPTION: NON-BATCH TRAINING
                 else:
                     with Pool(self.sample_size) as pool:
@@ -152,36 +175,58 @@ class MCFL_Orchestrator(Orchestrator):
                                 "iteration": iteration,
                                 "node_id": node_id,
                                 "loss": loss_list[-1], 
-                                "accuracy": accuracy_list[-1]}
-                # FEDOPT: AGGREGATING FUNCTION
-                    grad_avg = Aggregators.compute_average(copy.deepcopy(gradients)) # AGGREGATING FUNCTION
-                    # ARCHIVER: PRESERVING TRAINING ON NODES RESULTS
-                    if self.enable_archiver == True:
-                        self.archive_manager.archive_training_results(
-                            iteration = iteration,
-                            results=training_results
+                                "accuracy": accuracy_list[-1]
+                                }
+                # TRAINING AND TESTING RESULTS BEFORE THE MODEL UPDATE
+                # METRICS: PRESERVING TRAINING ON NODES RESULTS
+                if self.settings.save_training_metrics:
+                    save_training_metrics(
+                        file = training_results,
+                        saving_path = self.settings.results_path,
+                        file_name = "training_metrics.csv"
                         )
-                    
-                    updated_weights = self.Optimizer.fed_optimize(weights=copy.deepcopy(self.central_model.get_weights()),
-                                                            delta=copy.deepcopy(grad_avg))
-                            
-                    # FEDOPT: UPDATING THE NODES
-                    for node in connected_nodes:
-                        node.model.update_weights(copy.deepcopy(updated_weights))
-                    # FEDOPT: UPDATING THE CENTRAL MODEL 
-                    self.central_model.update_weights(copy.deepcopy(updated_weights))
-                    
-                    # ARCHIVER: PRESERVING RESULTS
-                    if self.enable_archiver == True:
-                        self.archive_manager.archive_testing_results(
+                # METRICS: TEST RESULTS ON NODES (TRAINED MODEL)
+                    for node in sampled_nodes:
+                        save_model_metrics(
                             iteration = iteration,
-                            central_model=self.central_model,
-                            nodes=connected_nodes)
+                            model = node.model,
+                            logger = self.orchestrator_logger,
+                            saving_path = self.settings.results_path,
+                            file_name = 'local_model_on_nodes.csv'
+                            )
+                
+                # FEDOPT: AGGREGATING FUNCTION
+                grad_avg = Aggregators.compute_average(copy.deepcopy(gradients)) # AGGREGATING FUNCTION
+                updated_weights = self.Optimizer.fed_optimize(
+                    weights=copy.deepcopy(self.central_model.get_weights()),
+                    delta=copy.deepcopy(grad_avg))
+                # FEDOPT: UPDATING THE NODES
+                for node in connected_nodes:
+                    node.model.update_weights(copy.deepcopy(updated_weights))
+                # FEDOPT: UPDATING THE CENTRAL MODEL 
+                self.central_model.update_weights(copy.deepcopy(updated_weights))
+                        
+                # TESTING RESULTS AFTER THE MODEL UPDATE
+                if self.settings.save_training_metrics:
+                    save_model_metrics(
+                        iteration = iteration,
+                        model = self.central_model,
+                        logger = self.orchestrator_logger,
+                        saving_path = self.settings.results_path,
+                        file_name = "global_model_on_orchestrator.csv"
+                    )
+                    for node in connected_nodes:
+                        save_model_metrics(
+                            iteration = iteration,
+                            model = node.model,
+                            logger = self.orchestrator_logger,
+                            saving_path = self.settings.results_path,
+                            file_name = "global_model_on_nodes.csv")
+                                
+                if self.full_debug == True:
+                    log_gpu_memory(iteration=iteration)
             else:
-                print(f"No nodes sent back the weights at iteration {iteration}")
-            
-            if self.full_debug == True:
-                log_gpu_memory(iteration=iteration)
+                print(f"Failed to collect any model at iteration {iteration}")
 
         self.orchestrator_logger.critical("Training complete")
         return 0
