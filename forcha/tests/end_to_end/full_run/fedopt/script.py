@@ -4,33 +4,26 @@ according to predefined schema. During the training, three contribution metrics 
 
 import pickle
 import os
+import datasets
 from forcha.components.orchestrator.fedopt_orchestrator import Fedopt_Orchestrator
-from forcha.templates.generate_template import basic_fedopt
-from forcha.components.settings.init_settings import init_settings
+from forcha.components.settings.fedopt_settings import FedoptSettings
 from forcha.models.templates.mnist import MNIST_Expanded_CNN
-
-
 
 def simulation():
     cwd = os.getcwd()
-    config = basic_fedopt(iterations=40,
-                          number_of_nodes=20,
-                          sample_size=5,
-                          root_path=cwd,
-                          local_lr=0.1,
-                          central_lr=0.5,
-                          local_epochs=2,
-                          batch_size=32,
-                          force_cpu=True)
+    settings = FedoptSettings(simulation_seed=42,
+                        global_epochs=20,
+                        local_epochs=3,
+                        number_of_nodes=5,
+                        sample_size=3,
+                        optimizer='SGD',
+                        batch_size=32,
+                        learning_rate=0.01)
     
-    settings = init_settings(
-         orchestrator_type='fed_opt',
-         initialization_method='dict',
-         dict_settings = config,
-         allow_default=True)
-    
-    with open(r'/home/mzuziak/snap/snapd-desktop-integration/83/Documents/Forcha/forcha/tests/end_to_end/datasets/dataset_2/FMNIST_20_dataset_pointers', 'rb') as path:
-        data = pickle.load(path)
+    # with open(r'/home/mzuziak/snap/snapd-desktop-integration/83/Documents/Forcha/forcha/tests/end_to_end/datasets/dataset_2/FMNIST_20_dataset_pointers', 'rb') as path:
+    #     data = pickle.load(path)
+    with open(f'/home/maciejzuziak/raid/documents/Forcha/forcha/tests/end_to_end/datasets/dataset/MNIST_5_dataset_pointers', 'rb') as file:
+        data = pickle.load(file)
     # DATA: Selecting data for the orchestrator
     orchestrator_data = data[0]
     # DATA: Selecting data for nodes
