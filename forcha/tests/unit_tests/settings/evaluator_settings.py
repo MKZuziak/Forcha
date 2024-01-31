@@ -1,10 +1,12 @@
 import unittest
-from forcha.components.settings.fedopt_settings import FedoptSettings
+from forcha.components.settings.evaluator_settings import EvaluatorSettings
+
 
 class TestSettingsClass(unittest.TestCase):
-
+    
+    
     def test_default(self):
-        test_object = FedoptSettings()
+        test_object = EvaluatorSettings()
         self.assertEqual(test_object.batch_size, 32)
         self.assertEqual(test_object.simulation_seed, 42)
         self.assertEqual(test_object.global_epochs, 10)
@@ -15,6 +17,9 @@ class TestSettingsClass(unittest.TestCase):
         self.assertEqual(test_object.b2, 0)
         self.assertEqual(test_object.tau, 0)
         self.assertEqual(test_object.global_learning_rate, 1.0)
+        self.assertTrue(test_object.AlphaSample)
+        self.assertTrue(test_object.LooSample)
+        self.assertEqual(test_object.line_search_length, 1)
     
     
     def test_custom(self):
@@ -30,8 +35,11 @@ class TestSettingsClass(unittest.TestCase):
         b1 = 0.5
         b2 = 0.5
         tau = 0.2
+        alpha = False
+        loo = False
+        line_search_length = 9
         
-        test_object = FedoptSettings(
+        test_object = EvaluatorSettings(
             simulation_seed=simulation_seed,
             global_epochs=global_epochs,
             local_epochs=local_epochs,
@@ -42,6 +50,9 @@ class TestSettingsClass(unittest.TestCase):
             b2=b2,
             tau=tau,
             global_learning_rate=global_learning_rate,
+            alpha_sample = alpha,
+            loo_sample = loo,
+            line_search_length = line_search_length,
             momentum = momentum,
             nesterov = nesterov)    
         
@@ -58,7 +69,9 @@ class TestSettingsClass(unittest.TestCase):
         self.assertEqual(test_object.b2, b2)
         self.assertEqual(test_object.tau, tau)
         self.assertEqual(test_object.global_learning_rate, global_learning_rate)
-        
-        
+        self.assertFalse(test_object.AlphaSample)
+        self.assertFalse(test_object.LooSample)
+        self.assertEqual(test_object.line_search_length, 9)
+
 if __name__ == '__main__':
     unittest.main()

@@ -14,7 +14,7 @@ class TestSettingsClass(unittest.TestCase):
         self.assertEqual(test_object.optimizer, 'RMS')
     
     
-    def test_cystom(self):
+    def test_custom(self):
         simulation_seed = 52
         global_epochs = 20
         local_epochs = 2

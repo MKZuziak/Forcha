@@ -1,17 +1,31 @@
 from forcha.components.settings.fedopt_settings import FedoptSettings
-from forcha.exceptions.settingexception import SettingsObjectException
 
-# TODO: THIS WAS NOT REFACTORED YET
-
-class Evaluator_Settings(FedoptSettings):
-    def __init__(self, allow_default: bool, 
-                 initialization_method: str = 'dict', 
-                 dict_settings: dict = None, 
+class EvaluatorSettings(FedoptSettings):
+    def __init__(self,
+                 simulation_seed: int = 42,
+                 global_epochs: int = 10,
+                 local_epochs: int = 2,
+                 number_of_nodes: int = 10,
+                 sample_size: int = 10,
+                 optimizer: str = 'RMS',
+                 batch_size: int = 32,
+                 global_optimizer: str = 'Simple',
+                 global_learning_rate: float = 1.0,
+                 learning_rate: float = 0.01,
+                 save_nodes_models: bool = False,
+                 save_central_model: bool = False,
+                 save_training_metrics: bool = True,
+                 b1: float = 0,
+                 b2: float = 0,
+                 tau: float = 0,
+                 alpha_sample: bool = True,
+                 loo_sample: bool = True,
+                 line_search_length: int = 1,
                  **kwargs) -> None:
-        """Initialization of an instance of the Evaluator object. Requires choosing the initialization method.
+        """Initialization of an instance of the FedoptSettings object. Requires choosing the initialization method.
         Can be initialized either from a dictionary containing all the relevant key-words or from the 
         manual launch. It is highly advised that the Settings object should be initialized from the dicitonary.
-        It inherits all the properties and attributes from the Parent class adding additionally the Evaluator object.
+        It inherits all the properties and attributes from the Parent class addting an additional Optimizer settings.
         
         Parameters
         ----------
@@ -27,166 +41,52 @@ class Evaluator_Settings(FedoptSettings):
         -------
         None
         """
-        super().__init__(allow_default, 
-                         initialization_method, 
-                         dict_settings, 
-                         **kwargs)
-        if initialization_method == 'dict':
-            self.init_evaluator_from_dict(dict_settings=self.orchestrator_settings)
-        elif initialization_method == 'manual':
-            # TODO: Not finished yet!
-            raise NotImplemented()
-        else:
-            raise SettingsObjectException('Initialization method is not supported. '\
-                                          'Supported methods: dict, manual')
-    
+        super(EvaluatorSettings, self).__init__(
+            simulation_seed =simulation_seed,
+            global_epochs = global_epochs,
+            local_epochs = local_epochs,
+            number_of_nodes = number_of_nodes,
+            sample_size = sample_size,
+            optimizer = optimizer,
+            batch_size = batch_size,
+            learning_rate = learning_rate,
+            save_nodes_models = save_nodes_models,
+            save_central_model = save_central_model,
+            save_training_metrics = save_training_metrics,
+            global_optimizer = global_optimizer,
+            global_learning_rate = global_learning_rate,
+            b1 = b1,
+            b2 = b2,
+            tau = tau,
+            **kwargs
+        )
 
-    def init_evaluator_from_dict(self,
-                                dict_settings: dict):
-        """Loads the evaluator configuration onto the settings instance. If the self.allow_default 
-        flag was set to True during instance creation, a default evaluator tempalte will be created
-        in absence of the one provided.
-        
-        Parameters
-        ----------
-        dict_settings: dict, default to None
-            A dictionary containing all the relevant settings if the initialization is made from dir. 
-            Default to None
-        
-        Returns
-        -------
-        None
-        """
-        try:
-            self.evaluator_settings = dict_settings['evaluator']
-        except KeyError:
-            if self.allow_defualt:
-                self.evaluator_settings = self.generate_default_evaluator()
-            else:
-                raise SettingsObjectException("Evaluator was enabled, but the evaluator settings are missing and the" \
-                                              "allow_default flag was set to False. Please provide evaluator settings or"\
-                                                "set the allow_default flag to True or disable the evaluator.")
-        
-        # Sanity check for the evaluator        
-        # try:
-        #     self.evaluator_settings["LOO_OR"]
-        # except KeyError:
-        #     if self.allow_defualt:
-        #         self.evaluator_settings["LOO_OR"] = False
-        #         print("WARNING! Leave-one-out One-Round was disabled by default.")
-        #     else:
-        #         raise SettingsObjectException("Evaluator object is missing the key properties!")
-        
-        # try:
-        #     self.evaluator_settings["Shapley_OR"]
-        # except KeyError:
-        #     if self.allow_defualt:
-        #         self.evaluator_settings["Shapley_OR"] = False
-        #         print("WARNING! Shapley One-Round was disabled by default.")
-        #     else:
-        #         raise SettingsObjectException("Evaluator object is missing the key properties!")
-        
-        try:
-            self.evaluator_settings["IN_SAMPLE_LOO"]
-        except KeyError:
-            if self.allow_defualt:
-                self.evaluator_settings["IN_SAMPLE_LOO"] = True
-                print("WARNING! In-sample Shapley was disabled by default.")
-            else:
-                raise SettingsObjectException("Evaluator object is missing the key properties!")
-        
-        try:
-            self.evaluator_settings["IN_SAMPLE_SHAP"]
-        except KeyError:
-            if self.allow_defualt:
-                self.evaluator_settings["IN_SAMPLE_SHAP"] = False
-                print("WARNING! In-sample Shapley was disabled by default.")
-            else:
-                raise SettingsObjectException("Evaluator object is missing the key properties!")
-        
-        try:
-            self.evaluator_settings["ALPHA"]
-        except KeyError:
-            if self.allow_defualt:
-                self.evaluator_settings["ALPHA"] = True
-                print("WARNING! LSAA was disabled by default.")
-            else:
-                raise SettingsObjectException("Evaluator object is missing the key properties!")
-        
-        # try:
-        #     self.evaluator_settings["EXTENDED_LSAA"]
-        # except KeyError:
-        #     if self.allow_defualt:
-        #         self.evaluator_settings["EXTENDED_LSAA"] = False
-        #         print("WARNING! In-sample Shapley was disabled by default.")
-        #     else:
-        #         raise SettingsObjectException("Evaluator object is missing the key properties!")
-        
-        try:
-            self.evaluator_settings["preserve_evaluation"]
-        except KeyError:
-            if self.allow_defualt:
-                self.evaluator_settings["preserve_evaluation"] = True
-                print("WARNING! Preserve-evaluation option was disabled by default.")
-            else:
-                raise SettingsObjectException("Evaluator object is missing the key properties!")
-        
-        try:
-            self.evaluator_settings["full_debug"]
-        except KeyError:
-            if self.allow_defualt:
-                self.evaluator_settings["full_debug"] = False
-                print("WARNING! Preserve-evaluation option was disabled by default.")
-            else:
-                raise SettingsObjectException("Evaluator object is missing the key properties!")
-        
-        self.orchestrator_settings['evaluator'] = self.evaluator_settings # Attaching evaluator to the orchestrator_settings
-
+        self.LooSample = loo_sample
+        self.AlphaSample = alpha_sample
+        self.line_search_length = line_search_length
         self.print_evaluator_template()
-        
-    
-    def generate_default_evaluator(self):
-        """Generates default optimizer template.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        -------
-        dict
-        """
-        print("WARNING! Generatic a new default archiver template.") #TODO: Switch for logger
-        evaluator = dict()
-        # evaluator['LOO_OR'] = False
-        # evaluator["Shapley_OR"] = False
-        evaluator["IN_SAMPLE_LOO"] = True
-        evaluator["IN_SAMPLE_SHAP"] = False
-        evaluator["ALPHA"] = True
-        evaluator["preserve_evaluation"] = {
-            "preserve_partial_results": True,
-            "preserve_final_results": True
-        }
-        evaluator["full_debug"] = False
-        evaluator["number_of_workers"] = 50
-
-        return evaluator
 
 
     def print_evaluator_template(self):
-        """Prints out the used template for the evaluator.
+        """Prints out the used template for the optimizer.
+        
         Parameters
         ----------
+        None
         
         Returns
         -------
-        dict
+        None
+        
         """
         string = f"""
-        Enable In-Sample Leave-one-out: {self.evaluator_settings['IN_SAMPLE_LOO']},
-        Enable In-Sample Shapley: {self.evaluator_settings['IN_SAMPLE_SHAP']},
-        Enable LSAA: {self.evaluator_settings['ALPHA']},
-        Preserve evaluation: {self.evaluator_settings["preserve_evaluation"]},
-        Enable full debug mode: {self.evaluator_settings["full_debug"]}
+        global optimizer: {self.global_optimizer},
+        global learning rate: {self.global_learning_rate},
+        b1: {self.b1},
+        b2: {self.b2},
+        tau: {self.tau}
+        activate LOO evaluation: {self.LooSample},
+        activate ALPHA evaluation: {self.AlphaSample},
+        alpha line search length: {self.line_search_length}
         """
-        print(string) #TODO: Switch for logger
+        print(string)
