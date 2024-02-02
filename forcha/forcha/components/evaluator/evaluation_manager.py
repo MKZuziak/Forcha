@@ -4,6 +4,7 @@ from forcha.components.evaluator.sample_evaluator import Sample_Evaluator
 from forcha.components.evaluator.sample_evaluator import Sample_Shapley_Evaluator
 from forcha.models.federated_model import FederatedModel
 from forcha.exceptions.evaluatorexception import Sample_Evaluator_Init_Exception
+from forcha.components.settings.evaluator_settings import EvaluatorSettings
 from forcha.utils.optimizers import Optimizers
 from collections import OrderedDict
 from forcha.utils.csv_handlers import save_coalitions
@@ -31,12 +32,15 @@ class Evaluation_Manager():
     life-cycle to preserve the results."""
     
 
-    def __init__(self,
-                settings: dict,
-                model_template: FederatedModel,
-                optimizer_template: Optimizers,
-                nodes: list = None,
-                iterations: int = None) -> None:
+    def __init__(
+        self,
+        settings: EvaluatorSettings,
+        model_template: FederatedModel,
+        optimizer_template: Optimizers,
+        nodes: list = None,
+        iterations: int = None,
+        full_debug: bool = False
+        ) -> None:
         """Manages the process of evaluation. Creates an instance of Evaluation_Manager 
         object, that controls all the instances that perform evaluation. Evaluation
         Manager operatores on 'flags' that are represented as bolean attributes of the
@@ -78,103 +82,77 @@ class Evaluation_Manager():
         self.nodes = nodes
         self.model_template = model_template
         self.optimizer_template = optimizer_template
+        self.full_debug = full_debug
         
         # Sets up a flag for each available method of evaluation.
         # Flag: Shapley-OneRound Method
         self.compiled_flags = []
-        if settings.get("Shapley_OR"):
-            self.flag_shap_or = True
-            self.compiled_flags.append('shapley_or')
-            raise NotImplementedError # TODO
-        else:
-            self.flag_shap_or = False
+        # if settings.ShapleyOR == True:
+        #     self.flag_shap_or = True
+        #     self.compiled_flags.append('shapley_or')
+        #     raise NotImplementedError # TODO
+        # else:
+        #     self.flag_shap_or = False
         # Flag: LOO-OneRound Method
-        if settings.get("LOO_OR"):
-            self.flag_loo_or = True
-            self.compiled_flags.append('loo_or')
-            raise NotImplementedError # TODO
-        else:
-            self.flag_loo_or = False
+        # if settings.LooOR == True:
+        #     self.flag_loo_or = True
+        #     self.compiled_flags.append('loo_or')
+        #     raise NotImplementedError # TODO
+        # else:
+        #     self.flag_loo_or = False
         # Flag: LOO-InSample Method
-        if settings.get("IN_SAMPLE_LOO"):
+        if settings.LooSample:
             self.flag_sample_evaluator = True
             self.compiled_flags.append('in_sample_loo')
         else:
             self.flag_sample_evaluator = False
         # Flag: Shapley-InSample Method
-        if settings.get("IN_SAMPLE_SHAP"):
-            self.flag_samplesh_evaluator = True
-            self.compiled_flags.append('in_sample_shap')
-        else:
-            self.flag_samplesh_evaluator = False
+        # if settings.ShapleySample:
+        #     self.flag_samplesh_evaluator = True
+        #     self.compiled_flags.append('in_sample_shap')
+        # else:
+        #     self.flag_samplesh_evaluator = False
         # Flag: Alpha-Amplification
-        if settings.get("ALPHA"):
+        if settings.AlphaSample:
             self.flag_alpha_evaluator = True
             self.compiled_flags.append('ALPHA')
         else:
             self.flag_alpha_evaluator = False
         
-        # Sets up a flag for each available method of score preservation
-        # Flag: Preservation of partial results (for In-Sample Methods)
-        if settings['preserve_evaluation'].get("preserve_partial_results"):
-            self.preserve_partial_results = True
-        else:
-            self.preserve_partial_results = False
-        # Flag: Preservation of the final result (for In-Sample Methods)
-        if settings['preserve_evaluation'].get("preserve_final_results"):
-            self.preserve_final_results = True
 
         # Initialization of objects necessary to perform evaluation.
         # Initialization: LOO-InSample Method and Shapley-InSample Method
-        if self.flag_shap_or or self.flag_loo_or:
-            self.or_evaluator = OR_Evaluator(settings=settings,
-                                             model=self.model_template)
+        # if self.flag_shap_or or self.flag_loo_or:
+        #     self.or_evaluator = OR_Evaluator(settings=settings,
+        #                                      model=self.model_template)
         # Initialization: LOO-InSample Method
-        if self.flag_sample_evaluator == True:
+        if self.flag_sample_evaluator:
             try:
                 self.sample_evaluator = Sample_Evaluator(nodes=nodes, iterations=iterations)
-            except NameError as e:
+            except NameError:
                 raise Sample_Evaluator_Init_Exception # TODO
         # Initialization: Shapley-InSample Method
-        if self.flag_samplesh_evaluator == True:
-            try:
-                self.samplesh_evaluator = Sample_Shapley_Evaluator(nodes = nodes, iterations=iterations)
-            except NameError as e:
-                raise Sample_Evaluator_Init_Exception # TODO
-        if self.flag_alpha_evaluator == True:
+        # if self.flag_samplesh_evaluator == True:
+        #     try:
+        #         self.samplesh_evaluator = Sample_Shapley_Evaluator(nodes = nodes, iterations=iterations)
+        #     except NameError as e:
+        #         raise Sample_Evaluator_Init_Exception # TODO
+        if self.flag_alpha_evaluator:
             try:
                 self.alpha_evaluator = Alpha_Amplified(nodes = nodes, iterations = iterations)
-                self.search_length = settings['line_search_length']
-            except NameError as e:
+                self.search_length = settings.line_search_length
+            except NameError:
                 raise #TODO: Custom error
-            except KeyError as k:
+            except KeyError:
                 raise #TODO: Lacking configuration error
 
         # Sets up the scheduler
-        if settings.get("scheduler"):
-            self.scheduler = settings['scheduler']
+        if settings.scheduler == True:
+            self.scheduler = settings.schedule
         else:
             self.scheduler = {flag: [iteration for iteration in range(iterations)] for flag in self.compiled_flags}
-        
-        # Auxiliary
-        # Option to enter full debug mode
-        if settings.get("full_debug"):
-            self.full_debug = True
-            if settings.get("debug_file_path"):
-                self.full_debug_path = settings["full_debug_path"]
-            else:
-                self.full_debug_path = os.getcwd()
-        else:
-            self.full_debug = False
-        
-        # Option to disable multiprocessing features
-        if settings.get("disable_multiprocessing"):
-            self.multip = False
-        else:
-            self.multip = True
-            self.number_of_workers = settings['number_of_workers']
     
-    
+        
     def set_leading_method(self,
                            name: str):
         """Sets the leading method of evaluation.
@@ -305,21 +283,26 @@ class Evaluation_Manager():
                     iteration = iteration,
                     optimizer = copy.deepcopy(self.previous_optimizer),
                     final_model = copy.deepcopy(self.updated_c_model),
-                    previous_model= copy.deepcopy(self.previous_c_model))
+                    previous_model= copy.deepcopy(self.previous_c_model)
+                    )
                 # Preserving debug values (if enabled)
                 if self.full_debug:
                     if iteration  == 0:
-                        save_coalitions(values=debug_values,
-                                        path=self.full_debug_path,
-                                        name='col_values_loo_debug.csv',
-                                        iteration=iteration,
-                                        mode=0)
+                        save_coalitions(
+                            values=debug_values,
+                            path=self.settings.results_path,
+                            name='col_values_loo_debug.csv',
+                            iteration=iteration,
+                            mode=0
+                            )
                     else:
-                        save_coalitions(values=debug_values,
-                                        path=self.full_debug_path,
-                                        name='col_values_loo_debug.csv',
-                                        iteration=iteration,
-                                        mode=1)
+                        save_coalitions(
+                            values=debug_values,
+                            path=self.settings.results_path,
+                            name='col_values_loo_debug.csv',
+                            iteration=iteration,
+                            mode=1
+                            )
 
         # # Shapley-InSample Method
         # if self.flag_samplesh_evaluator:
@@ -363,17 +346,21 @@ class Evaluation_Manager():
                             # Preserving debug values (if enabled)
                 if self.full_debug:
                     if iteration  == 0:
-                        save_coalitions(values=debug_values,
-                                        path=self.full_debug_path,
-                                        name='col_values_alpha_debug.csv',
-                                        iteration=iteration,
-                                        mode=0)
+                        save_coalitions(
+                            values=debug_values,
+                            path=self.settings.results_path,
+                            name='col_values_alpha_debug.csv',
+                            iteration=iteration,
+                            mode=0
+                            )
                     else:
-                        save_coalitions(values=debug_values,
-                                        path=self.full_debug_path,
-                                        name='col_values_alpha_debug.csv',
-                                        iteration=iteration,
-                                        mode=1)
+                        save_coalitions(
+                            values=debug_values,
+                            path=self.settings.results_path,
+                            name='col_values_alpha_debug.csv',
+                            iteration=iteration,
+                            mode=1
+                            )
 
 
     def finalize_tracking(self,
@@ -395,45 +382,45 @@ class Evaluation_Manager():
         """
         results = {'partial': {}, 'full': {}}
 
-        if self.flag_shap_or:
-            raise NotImplementedError
+        # if self.flag_shap_or:
+        #     raise NotImplementedError
         
-        if self.flag_loo_or:
-            raise NotImplementedError
+        # if self.flag_loo_or:
+        #     raise NotImplementedError
         
         if self.flag_sample_evaluator:
             partial_psi, psi = self.sample_evaluator.calculate_final_psi()
             results['partial']['partial_loo'] = partial_psi
             results['full']['loo'] = psi
         
-        if self.flag_samplesh_evaluator:
-            partial_shap, shap = self.samplesh_evaluator.calculate_final_shap()
-            results['partial']['partial_shap'] = partial_shap
-            results['full']['shap'] = shap
+        # if self.flag_samplesh_evaluator:
+        #     partial_shap, shap = self.samplesh_evaluator.calculate_final_shap()
+        #     results['partial']['partial_shap'] = partial_shap
+        #     results['full']['shap'] = shap
         
         if self.flag_alpha_evaluator:
             partial_alpha, alpha = self.alpha_evaluator.calculate_final_alpha()
             results['partial']['partial_alpha'] = partial_alpha
             results['full']['alpha'] = alpha
                 
-        if self.preserve_partial_results == True:
-            for metric, values in results['partial'].items():
-                s_path = os.path.join(path, (str(metric) + '.csv'))
-                field_names = self.nodes
-                field_names.append('iteration') # Field names == nodes id's (keys)
-                with open(s_path, 'w+', newline='') as csv_file:
-                    csv_writer = csv.DictWriter(csv_file, fieldnames=field_names)
-                    csv_writer.writeheader()
-                    for iteration, row in values.items():
-                        row['iteration'] = iteration
-                        csv_writer.writerow(row)
+        # Preserve partial results
+        for metric, values in results['partial'].items():
+            s_path = os.path.join(path, (str(metric) + '.csv'))
+            field_names = self.nodes
+            field_names.append('iteration') # Field names == nodes id's (keys)
+            with open(s_path, 'w+', newline='') as csv_file:
+                csv_writer = csv.DictWriter(csv_file, fieldnames=field_names)
+                csv_writer.writeheader()
+                for iteration, row in values.items():
+                    row['iteration'] = iteration
+                    csv_writer.writerow(row)
         
-        if self.preserve_final_results == True:
-            for metric, values in results['full'].items():
-                s_path = os.path.join(path, (str(metric) + '.csv'))
-                field_names = values.keys() # Field names == nodes id's (keys)
-                with open(s_path, 'w+', newline='') as csv_file:
-                    csv_writer = csv.DictWriter(csv_file, fieldnames=field_names)
-                    csv_writer.writeheader()
-                    csv_writer.writerow(values)
+        # Preserve final results
+        for metric, values in results['full'].items():
+            s_path = os.path.join(path, (str(metric) + '.csv'))
+            field_names = values.keys() # Field names == nodes id's (keys)
+            with open(s_path, 'w+', newline='') as csv_file:
+                csv_writer = csv.DictWriter(csv_file, fieldnames=field_names)
+                csv_writer.writeheader()
+                csv_writer.writerow(values)
         return results

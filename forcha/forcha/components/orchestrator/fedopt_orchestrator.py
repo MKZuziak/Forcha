@@ -119,14 +119,14 @@ class Fedopt_Orchestrator(Orchestrator):
                 with Pool(self.sample_size) as pool:
                     results = [pool.apply_async(train_nodes, (node, iteration, 'gradients')) for node in sampled_nodes]
                     for result in results:
-                            node_id, model_weights, loss_list, accuracy_list = result.get()
-                            gradients[node_id] = copy.deepcopy(model_weights)
-                            training_results[node_id] = {
-                                "iteration": iteration,
-                                "node_id": node_id,
-                                "loss": loss_list[-1], 
-                                "accuracy": accuracy_list[-1]
-                                }
+                        node_id, model_weights, loss_list, accuracy_list = result.get()
+                        gradients[node_id] = copy.deepcopy(model_weights)
+                        training_results[node_id] = {
+                            "iteration": iteration,
+                            "node_id": node_id,
+                            "loss": loss_list[-1], 
+                            "accuracy": accuracy_list[-1]
+                            }
             # TRAINING AND TESTING RESULTS BEFORE THE MODEL UPDATE
             # METRICS: PRESERVING TRAINING ON NODES RESULTS
             if self.settings.save_training_metrics:
@@ -147,7 +147,6 @@ class Fedopt_Orchestrator(Orchestrator):
             
             # FEDOPT: AGGREGATING FUNCTION
             grad_avg = Aggregators.compute_average(copy.deepcopy(gradients)) # AGGREGATING FUNCTION
-            # ARCHIVER: PRESERVING TRAINING ON NODES RESULTS
                         
             updated_weights = self.Optimizer.fed_optimize(
                 weights=copy.deepcopy(self.central_model.get_weights()),

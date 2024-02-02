@@ -21,6 +21,7 @@ class EvaluatorSettings(FedoptSettings):
                  alpha_sample: bool = True,
                  loo_sample: bool = True,
                  line_search_length: int = 1,
+                 scheduler = None,
                  **kwargs) -> None:
         """Initialization of an instance of the FedoptSettings object. Requires choosing the initialization method.
         Can be initialized either from a dictionary containing all the relevant key-words or from the 
@@ -64,6 +65,7 @@ class EvaluatorSettings(FedoptSettings):
         self.LooSample = loo_sample
         self.AlphaSample = alpha_sample
         self.line_search_length = line_search_length
+        self.scheduler = scheduler
         self.print_evaluator_template()
 
 
