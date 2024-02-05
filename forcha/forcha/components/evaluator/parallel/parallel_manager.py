@@ -6,6 +6,7 @@ from forcha.components.evaluator.parallel.parallel_psi import Parallel_PSI
 from forcha.utils.optimizers import Optimizers
 from collections import OrderedDict
 from forcha.utils.csv_handlers import save_coalitions
+import copy
 
 
 class Parallel_Manager(Evaluation_Manager):
@@ -50,7 +51,7 @@ class Parallel_Manager(Evaluation_Manager):
         if self.flag_alpha_evaluator:
             try:
                 self.alpha_evaluator = Parallel_Alpha(nodes = nodes, iterations = iterations)
-                self.search_length = settings['line_search_length']
+                self.search_length = settings.line_search_length
             except NameError as e:
                 raise #TODO: Custom error
             except KeyError as k:
@@ -82,55 +83,66 @@ class Parallel_Manager(Evaluation_Manager):
         -------
         None
         """
+        # LOO-InSample Method
+        if self.flag_sample_evaluator:
+            if iteration in self.scheduler['in_sample_loo']: # Checks scheduler
+                debug_values = self.sample_evaluator.update_psi(
+                    model_template = self.model_template,
+                    optimizer_template = self.optimizer_template,
+                    gradients = gradients,
+                    nodes_in_sample = nodes_in_sample,
+                    iteration = iteration,
+                    optimizer = copy.deepcopy(self.previous_optimizer),
+                    final_model = copy.deepcopy(self.updated_c_model),
+                    previous_model= copy.deepcopy(self.previous_c_model)
+                    )
+                # Preserving debug values (if enabled)
+                if self.full_debug:
+                    if iteration  == 0:
+                        save_coalitions(
+                            values=debug_values,
+                            path=self.settings.results_path,
+                            name='col_values_loo_debug.csv',
+                            iteration=iteration,
+                            mode=0
+                            )
+                    else:
+                        save_coalitions(
+                            values=debug_values,
+                            path=self.settings.results_path,
+                            name='col_values_loo_debug.csv',
+                            iteration=iteration,
+                            mode=1
+                            )
         #LSAA Method
         if self.flag_alpha_evaluator:
             if iteration in self.scheduler['ALPHA']: # Checks scheduler
                 debug_values = self.alpha_evaluator.update_alpha(
+                    model_template = self.model_template,
+                    optimizer_template = self.optimizer_template,
                     gradients = gradients,
                     nodes_in_sample = nodes_in_sample,
                     iteration = iteration,
                     search_length = self.search_length,
-                    optimizer = self.previous_optimizer,
-                    previous_model = self.previous_c_model,
-                    final_model = self.updated_c_model
-                    ) # Preserving debug values (if enabled)
-                if iteration  == 0:
-                    save_coalitions(
-                        values=debug_values,
-                        path=self.settings.results_path,
-                        name='col_values_alpha.csv',
-                        iteration=iteration,
-                        mode=0)
-                else:
-                    save_coalitions(
-                        values=debug_values,
-                        path=self.settings.results_path,
-                        name='col_values_alpha.csv',
-                        iteration=iteration,
-                        mode=1)
-        #PSI Method
-        if self.flag_sample_evaluator:
-            if iteration in self.scheduler['in_sample_loo']: # Checks scheduler
-                debug_values = self.sample_evaluator.update_psi(
-                    gradients = gradients,
-                    nodes_in_sample = nodes_in_sample,
-                    iteration = iteration,
-                    optimizer = self.previous_optimizer,
-                    final_model= self.updated_c_model,
-                    previous_model = self.previous_c_model
-                    )# Preserving debug values (if enabled)
-                if iteration  == 0:
-                    save_coalitions(
-                        values=debug_values,
-                        path=self.settings.results_path,
-                        name='col_values_loo.csv',
-                        iteration=iteration,
-                        mode=0
-                        )
-                else:
-                    save_coalitions(
-                        values=debug_values,
-                        path=self.settings.results_path,
-                        name='col_values_loo.csv',
-                        iteration=iteration,
-                        mode=1)
+                    optimizer = copy.deepcopy(self.previous_optimizer),
+                    final_model = copy.deepcopy(self.updated_c_model),
+                    previous_model = copy.deepcopy(self.previous_c_model))
+            
+                            # Preserving debug values (if enabled)
+                if self.full_debug:
+                    if iteration  == 0:
+                        save_coalitions(
+                            values=debug_values,
+                            path=self.settings.results_path,
+                            name='col_values_alpha_debug.csv',
+                            iteration=iteration,
+                            mode=0
+                            )
+                    else:
+                        save_coalitions(
+                            values=debug_values,
+                            path=self.settings.results_path,
+                            name='col_values_alpha_debug.csv',
+                            iteration=iteration,
+                            mode=1
+                            )

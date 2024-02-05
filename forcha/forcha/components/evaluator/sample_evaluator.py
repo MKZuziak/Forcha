@@ -37,9 +37,11 @@ def chunker(seq: iter, size: int) -> Generator:
     return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
 
-def select_gradients(gradients: OrderedDict,
-                     query: list,
-                     in_place: bool = False):
+def select_gradients(
+    gradients: OrderedDict,
+    query: list,
+    in_place: bool = False
+    ):
     """Helper function for selecting gradients that of nodes that are
     in the query.
 
@@ -93,16 +95,18 @@ class Sample_Evaluator():
         self.partial_psi = {round:{node: np.float64(0) for node in nodes} for round in range(iterations)} # Hash map containing all the partial psi for each sampled subset.
 
 
-    def update_psi(self,
-                   model_template: FederatedModel,
-                   optimizer_template: Optimizers,
-                   gradients: OrderedDict,
-                   nodes_in_sample: list,
-                   optimizer: Optimizers,
-                   iteration: int,
-                   final_model: FederatedModel,
-                   previous_model: FederatedModel,
-                   return_coalitions: bool = True):
+    def update_psi(
+        self,
+        model_template: FederatedModel,
+        optimizer_template: Optimizers,
+        gradients: OrderedDict,
+        nodes_in_sample: list,
+        optimizer: Optimizers,
+        iteration: int,
+        final_model: OrderedDict,
+        previous_model: OrderedDict,
+        return_coalitions: bool = True
+        ):
         """Method used to track_results after each training round.
         Given the graidnets, ids of the nodes included in sample,
         last version of the optimizer, previous version of the model
@@ -111,22 +115,29 @@ class Sample_Evaluator():
         
         Parameters
         ----------
+        model_temmplate: FederatedModel
+            A template of the FederatedModel object used during the simulation.
+        optimizer_template:
+            A template of the Optimizer object used during the simulation.     
         gradients: OrderedDict
             An OrderedDict containing gradients of the sampled nodes.
         nodes_in_sample: list
-            A list containing id's of the nodes that were sampled.
+            A list containing FederatedNodes that participated in the training.
         previous_optimizer: Optimizers
             An instance of the forcha.Optimizers class.
         iteration: int
             The current iteration.
+        final_model: FederatedModel
+            An instance of the FederatedModel object.
         previous_model: FederatedModel
             An instance of the FederatedModel object.
-        updated_model: FederatedModel
-            An instance of the FederatedModel object.
+        return_coalitions: bool
+            A bool flag indicating whether to score of every coalition.
         Returns
         -------
         None
         """
+        
         recorded_values = {}
         
         model_template.update_weights(final_model)

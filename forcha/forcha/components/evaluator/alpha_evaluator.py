@@ -34,17 +34,19 @@ class Alpha_Amplified():
         self.partial_alpha = {round:{node: np.float64(0) for node in nodes} for round in range(iterations)} # Hash map containing all the partial psi for each sampled subset.
     
 
-    def update_alpha(self,
-                    model_template: FederatedModel,
-                    optimizer_template: Optimizers,
-                    gradients: OrderedDict,
-                    nodes_in_sample: list,
-                    optimizer: OrderedDict,
-                    search_length: int,
-                    iteration: int,
-                    previous_model: OrderedDict,
-                    final_model: OrderedDict,
-                    return_coalitions: bool = True):
+    def update_alpha(
+        self,
+        model_template: FederatedModel,
+        optimizer_template: Optimizers,
+        gradients: OrderedDict,
+        nodes_in_sample: list,
+        optimizer: Optimizers,
+        iteration: int,
+        search_length: int,
+        final_model: OrderedDict,
+        previous_model: OrderedDict,
+        return_coalitions: bool = True
+        ):
         """Method used to track_results after each training round.
         Given the graidnets, ids of the nodes included in sample,
         last version of the optimizer, previous version of the model
@@ -53,27 +55,32 @@ class Alpha_Amplified():
         
         Parameters
         ----------
+        model_temmplate: FederatedModel
+            A template of the FederatedModel object used during the simulation.
+        optimizer_template:
+            A template of the Optimizer object used during the simulation.     
         gradients: OrderedDict
             An OrderedDict containing gradients of the sampled nodes.
         nodes_in_sample: list
-            A list containing id's of the nodes that were sampled.
-        optimizer: Optimizers
+            A list containing FederatedNodes that participated in the training.
+        previous_optimizer: Optimizers
             An instance of the forcha.Optimizers class.
-        search length: int,
-            A number of replicas that should be included in search.
         iteration: int
             The current iteration.
+        search_length: int
+            The search length for alpha amplification
+        final_model: FederatedModel
+            An instance of the FederatedModel object.
         previous_model: FederatedModel
             An instance of the FederatedModel object.
-        updated_model: FederatedModel
-            An instance of the FederatedModel object.
+        return_coalitions: bool
+            A bool flag indicating whether to score of every coalition.
         Returns
         -------
         None
         """
         
         recorded_values = {}
-        
         model_template.update_weights(final_model)
         final_model_score = model_template.evaluate_model()[1]
         recorded_values[tuple(gradients.keys())] = final_model_score

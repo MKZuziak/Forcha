@@ -7,19 +7,26 @@ from forcha.utils.computations import Aggregators
 from collections import OrderedDict
 from multiprocessing import Pool
 
-def calculate_psi(node_id: int,
-                   gradients: OrderedDict,
-                   optimizer: Optimizers,
-                   previous_model: FederatedModel,
-                   baseline_score: float) -> tuple[int, dict, float]:
+def calculate_psi(
+    node_id: int,
+    gradients: OrderedDict,
+    optimizer: Optimizers,
+    previous_model: FederatedModel,
+    baseline_score: float,
+    model_template: FederatedModel,
+    optimizer_template: Optimizers
+    ) -> tuple[int, dict, float]:
+    
     recorded_values = {}
     del gradients[node_id]
-    
-    delta = Aggregators.compute_average(gradients)
-    weights = optimizer.fed_optimize(weights=previous_model.get_weights(),
-                                      delta=delta)
-    previous_model.update_weights(weights)
-    score = previous_model.quick_evaluate()[1]
+    optimizer_template.set_weights(previous_delta=copy.deepcopy(optimizer[0]),
+                                    previous_momentum=copy.deepcopy(optimizer[1]),
+                                    learning_rate=copy.deepcopy(optimizer[2]))
+    grad_avg = Aggregators.compute_average(gradients)
+    weights = optimizer_template.fed_optimize(weights=copy.deepcopy(previous_model),
+                                                delta = grad_avg)
+    model_template.update_weights(weights)
+    score = model_template.evaluate_model()[1]
     recorded_values[tuple(gradients.keys())] = score
     psi = baseline_score - score
     
@@ -33,22 +40,60 @@ class Parallel_PSI(Sample_Evaluator):
         super().__init__(nodes, iterations)
     
     
-    def update_psi(self,
+    def update_psi(
+        self,
+        model_template: FederatedModel,
+        optimizer_template: Optimizers,
         gradients: OrderedDict,
         nodes_in_sample: list,
         optimizer: Optimizers,
         iteration: int,
-        previous_model: FederatedModel,
-        final_model: FederatedModel,
-        return_coalitions: bool = True):
+        final_model: OrderedDict,
+        previous_model: OrderedDict,
+        return_coalitions: bool = True
+        ):
+        """Method used to track_results after each training round.
+        Given the graidnets, ids of the nodes included in sample,
+        last version of the optimizer, previous version of the model
+        and the updated version of the model, it calculates values of
+        all the marginal contributions using Leave-one-out method.
         
+        Parameters
+        ----------
+        model_temmplate: FederatedModel
+            A template of the FederatedModel object used during the simulation.
+        optimizer_template:
+            A template of the Optimizer object used during the simulation.     
+        gradients: OrderedDict
+            An OrderedDict containing gradients of the sampled nodes.
+        nodes_in_sample: list
+            A list containing FederatedNodes that participated in the training.
+        previous_optimizer: Optimizers
+            An instance of the forcha.Optimizers class.
+        iteration: int
+            The current iteration.
+        final_model: FederatedModel
+            An instance of the FederatedModel object.
+        previous_model: FederatedModel
+            An instance of the FederatedModel object.
+        return_coalitions: bool
+            A bool flag indicating whether to score of every coalition.
+        Returns
+        -------
+        None
+        """
+        
+        print("Calculating LOO score in parallel")
         recorded_values = {}
-        baseline_score = final_model.quick_evaluate()[1]
-        recorded_values[tuple(gradients.keys())] = baseline_score
+        model_template.update_weights(final_model)
+        final_model_score = model_template.evaluate_model()[1]
+        recorded_values[tuple(gradients.keys())] = final_model_score
         
         with Pool(len(nodes_in_sample)) as pool:
             results = [pool.apply_async(calculate_psi, (node.node_id, copy.deepcopy(gradients), copy.deepcopy(optimizer), \
-                copy.deepcopy(previous_model), baseline_score)) for node in nodes_in_sample]
+                copy.deepcopy(previous_model), final_model_score, copy.deepcopy(model_template), copy.deepcopy(optimizer_template))) \
+                    for node in nodes_in_sample]
+      
             for result in results:
                 node_id, recorded, psi_score = result.get()
                 recorded_values.update(recorded)
