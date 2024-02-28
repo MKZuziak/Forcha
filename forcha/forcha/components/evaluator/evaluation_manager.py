@@ -12,12 +12,12 @@ from forcha.components.settings.evaluator_settings import EvaluatorSettings
 from forcha.utils.optimizers import Optimizers
 from forcha.utils.csv_handlers import save_coalitions
 
-def compare_for_debug(dict1, dict2):
-    for (row1, row2) in zip(dict1.values(), dict2.values()):
-        if False in (row1 == row2):
-            return False
-        else:
-            return True
+# def compare_for_debug(dict1, dict2):
+#     for (row1, row2) in zip(dict1.values(), dict2.values()):
+#         if False in (row1 == row2):
+#             return False
+#         else:
+#             return True
 
 
 class Evaluation_Manager():
@@ -56,11 +56,14 @@ class Evaluation_Manager():
             A dictionary containing all the relevant settings for the evaluation_manager.
         model_template: FederatedModel
             A initialized instance of the class forcha.models.pytorch.federated_model.FederatedModel
-            This is necessary to initialize some contribution-estimation objects.
+            This is necessary to initialize some contribution-estimation objects. This is a Federated
+            Model that is associated with the central model (and its test set).
         nodes: list[int], default to None
             A list containing the id's of all the relevant nodes.
         iterations: int, default to None
             Number of iterations.
+        full_debug: bool, default to False
+            Boolean flag for enabling a full debug mode.
         
         Returns
         -------
@@ -150,8 +153,10 @@ class Evaluation_Manager():
     #         raise NameError # TODO: Add custom error.
     
     
-    def preserve_previous_model(self,
-                                previous_model: OrderedDict):
+    def preserve_previous_model(
+        self,
+        previous_model: OrderedDict
+        ):
         """Preserves the model from the previous round by copying 
         its structure and using it as an attribute's value. Should
         be called each training round before the proper training
@@ -161,6 +166,7 @@ class Evaluation_Manager():
         ----------
         previous_model: OrderedDict
             Ordered Dict containing weights of the previous (central) model.
+        
         Returns
         -------
         None
@@ -168,8 +174,10 @@ class Evaluation_Manager():
         self.previous_c_model = copy.deepcopy(previous_model)
     
 
-    def preserve_updated_model(self,
-                               updated_model: OrderedDict):
+    def preserve_updated_model(
+        self,
+        updated_model: OrderedDict
+        ):
         """Preserves the updated version of the central model
         by copying its structure and using it as an attribute's value. 
         Should be called each training after updating the weights
@@ -179,15 +187,17 @@ class Evaluation_Manager():
         ----------
         updated_model: FederatedModel
             Ordered Dict containing weights of the previous (central) model.
+        
         Returns
         -------
         None
-       """
+        """
         self.updated_c_model = copy.deepcopy(updated_model)
     
     
-    def preserve_previous_optimizer(self,
-                                    previous_optimizer: tuple[OrderedDict, OrderedDict, float]):
+    def preserve_previous_optimizer(
+        self,
+        previous_optimizer: tuple[OrderedDict, OrderedDict, float]):
         """Preserves the Optimizer from the previous round by copying 
         its structure and using it as an attribute's value. Should
         be called each training round before the proper training
@@ -198,6 +208,7 @@ class Evaluation_Manager():
         previous_optimizer: tuple[OrderedDict, OrderedDict, float]
             Tuple containing data of the optimizer, of the form:
             tuple[previous_delta, previous_momentum, learning_rate]
+        
         Returns
         -------
         None
@@ -205,25 +216,29 @@ class Evaluation_Manager():
         self.previous_optimizer = copy.deepcopy(previous_optimizer)
     
     
-    def get_last_results(self,
-                         iteration: int) -> tuple[int, dict]:
+    def get_last_results(
+        self,
+        iteration: int
+        ) -> tuple[int, dict]:
         """Returns the results of the last evaluation 
         round
 
         Parameters
         iteration (int): curret iteration
         ----------
+        
         Returns
+        -------
         tuple[int, dict]: tuple containing a last round id and a dict mapping nodes' id to the result.
-        None
         """
         return self.default_method.return_last_value(iteration = iteration)
 
     
-    def track_results(self,
-                        gradients: OrderedDict,
-                        nodes_in_sample: list,
-                        iteration: int):
+    def track_results(
+        self,
+        gradients: OrderedDict,
+        nodes_in_sample: list,
+        iteration: int):
         """Method used to track_results after each training round.
         Because the Orchestrator abstraction should be free of any
         unnecessary encumbrance, the Evaluation_Manager.track_results()
@@ -238,6 +253,7 @@ class Evaluation_Manager():
             A list containing id's of the nodes that were sampled.
         iteration: int
             The current iteration.
+        
         Returns
         -------
         None
@@ -341,8 +357,10 @@ class Evaluation_Manager():
                             )
 
 
-    def finalize_tracking(self,
-                          path: str = None):
+    def finalize_tracking(
+        self,
+        path: str = None
+        ):
         """Method used to finalize the tracking at the end of the training.
         Because the Orchestrator abstraction should be free of any
         unnecessary encumbrance, all the options configuring the behaviour
@@ -354,8 +372,10 @@ class Evaluation_Manager():
         path: str, default to None
             a string or Path-like object to the directory in which results
             should be saved.
+        
         Returns
         -------
+        
         None
         """
         results = {'partial': {}, 'full': {}}
@@ -401,4 +421,5 @@ class Evaluation_Manager():
                 csv_writer = csv.DictWriter(csv_file, fieldnames=field_names)
                 csv_writer.writeheader()
                 csv_writer.writerow(values)
+        
         return results

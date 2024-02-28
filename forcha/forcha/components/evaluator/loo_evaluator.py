@@ -1,12 +1,11 @@
-from forcha.utils.computations import Aggregators
-from forcha.utils.computations import Subsets
-import numpy as np
-import copy
 import math
-from multiprocessing import Pool, Manager
-from forcha.models.federated_model import FederatedModel
+import copy
 from collections import OrderedDict
-from _collections_abc import Generator
+
+import numpy as np
+
+from forcha.utils.computations import Aggregators
+from forcha.models.federated_model import FederatedModel
 from forcha.utils.optimizers import Optimizers
 
 
@@ -16,9 +15,11 @@ class Sample_LOO_Evaluator():
     assess the Leave-one-out value for every client included in the sample. It is also
     able to sum the marginal values to obain a final Leave-one-out value."""
     
-    def __init__(self,
-                 nodes: list,
-                 iterations: int) -> None:
+    def __init__(
+        self,
+        nodes: list,
+        iterations: int
+        ) -> None:
         """Constructor for the Sample Evaluator Class. Initializes empty
         hash tables for LOO value for each iteration as well as hash table
         for final LOO values.
@@ -29,6 +30,7 @@ class Sample_LOO_Evaluator():
             A list containing ids of all the nodes engaged in the training.
         iterations: int
             A number of training iterations
+        
         Returns
         -------
         None

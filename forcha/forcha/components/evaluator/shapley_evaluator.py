@@ -1,11 +1,13 @@
-from forcha.utils.computations import Aggregators
-from forcha.utils.computations import Subsets
-import numpy as np
 import copy
 import math
-from forcha.models.federated_model import FederatedModel
 from collections import OrderedDict
 from _collections_abc import Generator
+
+import numpy as np
+
+from forcha.utils.computations import Aggregators
+from forcha.utils.computations import Subsets
+from forcha.models.federated_model import FederatedModel
 from forcha.utils.optimizers import Optimizers
 
 
@@ -17,7 +19,10 @@ def compare_for_debug(dict1, dict2):
             return True
 
 
-def chunker(seq: iter, size: int) -> Generator:
+def chunker(
+    seq: iter, 
+    size: int
+    ) -> Generator:
     """Helper function for splitting an iterable into a number
     of chunks each of size n. If the iterable can not be splitted
     into an equal number of chunks of size n, chunker will return the
@@ -29,6 +34,7 @@ def chunker(seq: iter, size: int) -> Generator:
         An iterable object that needs to be splitted into n chunks.
     size: int
         A size of individual chunk
+    
     Returns
     -------
     Generator
@@ -53,6 +59,7 @@ def select_gradients(
         A size containing ids of the searched nodes.
     in_place: bool, default to False
         No description
+    
     Returns
     -------
     Generator
@@ -76,9 +83,11 @@ class Sample_Shapley_Evaluator():
     client included in the sample. It is also able to sum the marginal values to obain 
     a final Shapley values."""
     
-    def __init__(self,
-                 nodes: list,
-                 iterations: int) -> None:
+    def __init__(
+        self,
+        nodes: list,
+        iterations: int
+        ) -> None:
         """Constructor for the Shapley Sample Evaluator Class. Initializes empty
         hash tables for Shapley value for each iteration as well as hash table
         for final Shapley values.
@@ -89,6 +98,7 @@ class Sample_Shapley_Evaluator():
             A list containing ids of all the nodes engaged in the training.
         iterations: int
             A number of training iterations
+        
         Returns
         -------
         None
@@ -107,7 +117,8 @@ class Sample_Shapley_Evaluator():
         iteration: int,
         final_model: OrderedDict,
         previous_model: OrderedDict,
-        return_coalitions: bool = True):
+        return_coalitions: bool = True
+        ) -> dict:
         """Method used to track_results after each training round.
         Given the graidnets, ids of the nodes included in sample,
         last version of the optimizer, previous version of the model
@@ -134,9 +145,10 @@ class Sample_Shapley_Evaluator():
             An instance of the FederatedModel object.
         return_coalitions: bool
             A bool flag indicating whether to score of every coalition.
+        
         Returns
         -------
-        None
+        dict
         """
         
         # Operations counter to track the progress of the calculations.
@@ -150,7 +162,6 @@ class Sample_Shapley_Evaluator():
         nodes_in_sample = [node.node_id for node in nodes_in_sample] 
         # Forming superset of all the possible coalitions.
         superset = Subsets.form_superset(nodes_in_sample, return_dict=True)
-
 
         for node in nodes_in_sample:
             shap = 0.0
@@ -168,14 +179,20 @@ class Sample_Shapley_Evaluator():
                 # Else calculate the score and add to the registered values.
                 else:
                     print(f"{operation_counter} of {number_of_operations}: forming and evaluating subset {coalition_without_client}")
-                    coalitions_gradients = select_gradients(gradients = gradients, 
-                                                            query = coalition_without_client)
-                    optimizer_template.set_weights(previous_delta=copy.deepcopy(optimizer[0]),
-                                                   previous_momentum=copy.deepcopy(optimizer[1]),
-                                                   learning_rate=copy.deepcopy(optimizer[2]))
+                    coalitions_gradients = select_gradients(
+                        gradients = gradients, 
+                        query = coalition_without_client
+                        )
+                    optimizer_template.set_weights(
+                        previous_delta=copy.deepcopy(optimizer[0]),
+                        previous_momentum=copy.deepcopy(optimizer[1]),
+                        learning_rate=copy.deepcopy(optimizer[2])
+                        )
                     grad_avg = Aggregators.compute_average(coalitions_gradients)
-                    weights = optimizer_template.fed_optimize(weights=copy.deepcopy(previous_model),
-                                                              delta = grad_avg)
+                    weights = optimizer_template.fed_optimize(
+                        weights=copy.deepcopy(previous_model),
+                        delta = grad_avg
+                        )
                     model_template.update_weights(weights)
                     coalition_without_client_score = model_template.evaluate_model()
                     recorded_values[coalition_without_client_score] = coalition_without_client_score
@@ -188,14 +205,20 @@ class Sample_Shapley_Evaluator():
                 # Else calculate the score and add to the registered values.
                 else:
                     print(f"{operation_counter} of {number_of_operations}: forming and evaluating subset {coalition_with_client}")
-                    coalitions_gradients = select_gradients(gradients = gradients, 
-                                                            query = coalition_with_client)
-                    optimizer_template.set_weights(previous_delta=copy.deepcopy(optimizer[0]),
-                                                   previous_momentum=copy.deepcopy(optimizer[1]),
-                                                   learning_rate=copy.deepcopy(optimizer[2]))
+                    coalitions_gradients = select_gradients(
+                        gradients = gradients, 
+                        query = coalition_with_client
+                        )
+                    optimizer_template.set_weights(
+                        previous_delta=copy.deepcopy(optimizer[0]),
+                        previous_momentum=copy.deepcopy(optimizer[1]),
+                        learning_rate=copy.deepcopy(optimizer[2])
+                        )
                     grad_avg = Aggregators.compute_average(coalitions_gradients)
-                    weights = optimizer_template.fed_optimize(weights=copy.deepcopy(previous_model),
-                                                              delta = grad_avg)
+                    weights = optimizer_template.fed_optimize(
+                        weights=copy.deepcopy(previous_model),
+                        delta = grad_avg
+                        )
                     model_template.update_weights(weights)
                     coalition_with_client_score = model_template.evaluate_model()
                     recorded_values[coalition_with_client_score] = coalition_with_client_score
