@@ -1,4 +1,4 @@
-from forcha.components.evaluator.sample_evaluator import Sample_Evaluator
+from forcha.components.evaluator.loo_evaluator import Sample_Evaluator
 import numpy as np
 import copy
 from forcha.models.federated_model import FederatedModel

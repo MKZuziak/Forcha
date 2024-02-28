@@ -18,8 +18,9 @@ class EvaluatorSettings(FedoptSettings):
                  b1: float = 0,
                  b2: float = 0,
                  tau: float = 0,
-                 alpha_sample: bool = True,
-                 loo_sample: bool = True,
+                 in_sample_alpha: bool = True,
+                 in_sample_loo: bool = True,
+                 in_sample_shap: bool = False,
                  line_search_length: int = 1,
                  scheduler = None,
                  **kwargs) -> None:
@@ -62,8 +63,9 @@ class EvaluatorSettings(FedoptSettings):
             **kwargs
         )
 
-        self.LooSample = loo_sample
-        self.AlphaSample = alpha_sample
+        self.in_sample_loo = in_sample_loo
+        self.in_sample_shap = in_sample_shap
+        self.in_sample_alpha = in_sample_alpha
         self.line_search_length = line_search_length
         self.scheduler = scheduler
         self.print_evaluator_template()
@@ -87,8 +89,9 @@ class EvaluatorSettings(FedoptSettings):
         b1: {self.b1},
         b2: {self.b2},
         tau: {self.tau}
-        activate LOO evaluation: {self.LooSample},
-        activate ALPHA evaluation: {self.AlphaSample},
+        activate LOO evaluation: {self.in_sample_loo},
+        activate ALPHA evaluation: {self.in_sample_shap},
+        activate SHAP evaluation: {self.in_sample_shap},
         alpha line search length: {self.line_search_length}
         """
         print(string)

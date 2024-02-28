@@ -1,5 +1,7 @@
 import copy
-from forcha.components.evaluator.parallel.parallel_manager import Parallel_Manager
+from multiprocessing import Pool, set_start_method
+
+# from forcha.components.evaluator.parallel.parallel_manager import Parallel_Manager
 from forcha.components.evaluator.evaluation_manager import Evaluation_Manager
 from forcha.components.orchestrator.generic_orchestrator import Orchestrator
 from forcha.utils.optimizers import Optimizers
@@ -8,19 +10,10 @@ from forcha.utils.orchestrations import sample_nodes, train_nodes
 from forcha.components.settings.settings import Settings
 from forcha.utils.debugger import log_gpu_memory
 from forcha.utils.helpers import Helpers
-from multiprocessing import Pool
 from forcha.utils.handlers import save_csv_file, save_model_metrics, save_training_metrics
 
-from multiprocessing import set_start_method
+# Set start method set to spawn to ensure cross-platform compatibility.
 set_start_method("spawn", force=True)
-
-
-# def compare_for_debug(dict1, dict2):
-#     for (row1, row2) in zip(dict1.values(), dict2.values()):
-#         if False in (row1 == row2):
-#             return False
-#         else:
-#             return True
 
 
 class Evaluator_Orchestrator(Orchestrator):
@@ -32,10 +25,11 @@ class Evaluator_Orchestrator(Orchestrator):
         is able to assess clients marginal contribution with the help of Evaluation Manager."""
     
     
-    def __init__(self, 
-                 settings: Settings, 
-                 **kwargs
-                 ) -> None:
+    def __init__(
+        self, 
+        settings: Settings, 
+        **kwargs
+        ) -> None:
         """Orchestrator is initialized by passing an instance
         of the Settings object. Settings object contains all the relevant configurational
         settings that an instance of the Orchestrator object may need to complete the simulation.
@@ -78,60 +72,82 @@ class Evaluator_Orchestrator(Orchestrator):
         int
             Returns 0 on the successful completion of the training.
         """
-        # OPTIMIZER CLASS OBJECT
-        self.Optimizer = Optimizers(
+        # BEGINING OF TRAINING
+        ########################################################
+        ########################################################
+        ########################################################
+        
+        ########################################################
+        # FEDOPT - CREATE OPTIMIZER INSTANCE
+        self.optimizer = Optimizers(
             weights = self.central_model.get_weights(),
             settings=self.settings
             )
-        # EVALUATION MANAGER: INITIALIZAITON
+        ########################################################
+        
+        ########################################################
+        # FEDOPT EVALUATOR - CREATE EVALUATION MANAGER INSTANCE
         if self.parallelization:
-            Evaluation_manager = Parallel_Manager(settings = self.settings,
-                                                  model_template = copy.deepcopy(self.central_model),
-                                                  optimizer_template = copy.deepcopy(self.Optimizer),
-                                                  nodes = [node.node_id for node in self.network],
-                                                  iterations = self.iterations,
-                                                  full_debug = self.full_debug)
+            # evaluation_manager = Parallel_Manager(settings = self.settings,
+            #                                       model_template = copy.deepcopy(self.central_model),
+            #                                       optimizer_template = copy.deepcopy(self.Optimizer),
+            #                                       nodes = [node.node_id for node in self.network],
+            #                                       iterations = self.iterations,
+            #                                       full_debug = self.full_debug)
+            self.evaluation_manager = None
         else:
-            Evaluation_manager = Evaluation_Manager(settings = self.settings,
-                                                 model_template = copy.deepcopy(self.central_model),
-                                                 optimizer_template = copy.deepcopy(self.Optimizer),
-                                                 nodes = [node.node_id for node in self.network],
-                                                 iterations = self.iterations,
-                                                 full_debug = self.full_debug)
+            self.evaluation_manager = Evaluation_Manager(
+                settings = self.settings,
+                model_template = self.central_model,
+                optimizer_template = self.Optimizer,
+                nodes = [node.node_id for node in self.network],
+                iterations = self.iterations,
+                full_debug = self.full_debug
+                )
+        ########################################################
         
         # TRAINING PHASE ----- FEDOPT WITH EVALUATOR
-        # FEDOPT - CREATE POOL OF WORKERS
         for iteration in range(self.iterations):
+            # BEGINING OF ITERATION
+            ########################################################
+            ########################################################
             self.orchestrator_logger.info(f"Iteration {iteration}")
+           
+            ########################################################
+            # FEDOPT - INIT PHASE
             gradients = {}
-            training_results = {}
-            
+            training_results = {}       
             # Checking for connectivity
             connected_nodes = [node for node in self.network]
-            
             # Weights dispatched before the training (if activated)
             self.orchestrator_logger.info(f"Iteration {iteration}, dispatching nodes to connected clients.")
             for node in connected_nodes:
-                node.model.update_weights(copy.deepcopy(self.central_model.get_weights()))
+                node.model.update_weights(self.central_model.get_weights())
+            ########################################################
             
+            ########################################################
+            # FEDOPT EVALUATOR - PRESERVING PHASE
+            self.evaluation_manager.preserve_previous_model(previous_model = self.central_model.get_weights())
+            self.evaluation_manager.preserve_previous_optimizer(previous_optimizer = self.optimizer.get_weights())
+            ########################################################
             
-            # EVALUATION MANAGER: preserving the last version of the model and optimizer
-            Evaluation_manager.preserve_previous_model(previous_model = copy.deepcopy(self.central_model.get_weights()))
-            Evaluation_manager.preserve_previous_optimizer(previous_optimizer = copy.deepcopy(self.Optimizer.get_weights()))
-            # Sampling nodes and asynchronously apply the function
+            ########################################################
+            # FEDOPT - SAMPLING PHASE
             sampled_nodes = sample_nodes(
                 connected_nodes, 
                 sample_size=self.sample_size,
                 generator=self.generator
-                ) # SAMPLING FUNCTION
+                )
+            ########################################################
+            
+            ########################################################
             # FEDOPT - TRAINING PHASE
-            # OPTION: BATCH TRAINING
+            # FEDOPT OPTION I: BATCH TRAINING
             if self.batch_job:
                 self.orchestrator_logger.info(f"Entering batched job, size of the batch {self.batch}")
                 for batch in Helpers.chunker(sampled_nodes, size=self.batch):
                     with Pool(len(list(batch))) as pool:
                         results = [pool.apply_async(train_nodes, (node, iteration, 'gradients')) for node in batch]
-
                         for result in results:
                             node_id, model_weights, loss_list, accuracy_list = result.get()
                             gradients[node_id] = copy.deepcopy(model_weights)
@@ -141,7 +157,7 @@ class Evaluator_Orchestrator(Orchestrator):
                                 "loss": loss_list[-1], 
                                 "accuracy": accuracy_list[-1]
                                 }
-            # OPTION: NON-BATCH TRAINING
+            # FEDOPT OPTION II: BATCH TRAINING
             else:
                 with Pool(self.sample_size) as pool:
                     results = [pool.apply_async(train_nodes, (node, iteration, 'gradients')) for node in sampled_nodes]
@@ -154,10 +170,15 @@ class Evaluator_Orchestrator(Orchestrator):
                             "loss": loss_list[-1], 
                             "accuracy": accuracy_list[-1]
                             }
-            # EVALUATOR: MAKE COPIES OF THE GRADIENTS
-            grad_copy = copy.deepcopy(gradients) #TODO Copy for the evaluation, since Agg.compute_average changes the weights
-            # TRAINING AND TESTING RESULTS BEFORE THE MODEL UPDATE
-            # METRICS: PRESERVING TRAINING ON NODES RESULTS
+            ########################################################
+           
+            ########################################################
+            # FEDOPT EVALUATOR - PRESERVING PHASE
+            grad_copy = copy.deepcopy(gradients)
+            ########################################################
+            
+            ########################################################
+            # FEDOPT - TESTING RESULTS BEFORE THE MODEL UPDATE PHASE
             if self.settings.save_training_metrics:
                 save_training_metrics(
                     file = training_results,
@@ -173,26 +194,32 @@ class Evaluator_Orchestrator(Orchestrator):
                         saving_path = self.settings.results_path,
                         file_name = 'local_model_on_nodes.csv'
                         )
+            ########################################################
             
-            # FEDOPT: AGGREGATING FUNCTION
+            ########################################################
+            # FEDOPT - AGGREGATION AND CENTRAL UPDATE PHASE
             grad_avg = Aggregators.compute_average(gradients) # AGGREGATING FUNCTION -> CHANGE IF NEEDED
-            updated_weights = self.Optimizer.fed_optimize(
+            updated_weights = self.optimizer.fed_optimize(
                 weights=copy.deepcopy(self.central_model.get_weights()),
-                delta=copy.deepcopy(grad_avg))
-            # FEDOPT: UPDATING THE CENTRAL MODEL 
+                delta=copy.deepcopy(grad_avg)) 
             self.central_model.update_weights(copy.deepcopy(updated_weights))
-            # EVALUATOR: PRESERVE UPDATED MODEL
-            Evaluation_manager.preserve_updated_model(
+            ########################################################
+            
+            ########################################################
+            # FEDOPT EVALUATOR - PRESERVE UPDATED MODEL AND TRACK RESULTS
+            self.evaluation_manager.preserve_updated_model(
                 updated_model = copy.deepcopy(self.central_model.get_weights()))
             # EVALUATOR: TRACK RESULTS
-            Evaluation_manager.track_results(gradients = grad_copy,
-                                             nodes_in_sample = sampled_nodes,
-                                             iteration = iteration)
-            # FEDOPT: UPDATING THE NODES
+            self.evaluation_manager.track_results(
+                gradients = grad_copy,
+                nodes_in_sample = sampled_nodes,
+                iteration = iteration)
+            ########################################################
+            
+            ########################################################
+            # FEDOPT - UPDATING THE NODES AND SAVE RESULTS
             for node in connected_nodes:
                 node.model.update_weights(copy.deepcopy(updated_weights))       
-                   
-            # TESTING RESULTS AFTER THE MODEL UPDATE
             if self.settings.save_training_metrics:
                 save_model_metrics(
                     iteration = iteration,
@@ -208,7 +235,16 @@ class Evaluator_Orchestrator(Orchestrator):
                         logger = self.orchestrator_logger,
                         saving_path = self.settings.results_path,
                         file_name = "global_model_on_nodes.csv")
-        Evaluation_manager.finalize_tracking(path=self.settings.results_path)
+            ########################################################
+            
+            ########################################################
+            ########################################################
+            # END OF ITERATION
+        
+        ########################################################
+        # FEDOPT EVALUATOR - PRESERVE FINAL RESULTS
+        self.evaluation_manager.finalize_tracking(path=self.settings.results_path)
+        ########################################################
         
         if self.full_debug == True:
             log_gpu_memory(iteration=iteration)    

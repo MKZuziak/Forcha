@@ -1,23 +1,27 @@
+from forcha.utils.computations import Aggregators
+from forcha.utils.computations import Subsets
 import numpy as np
 import copy
+import math
+from multiprocessing import Pool, Manager
 from forcha.models.federated_model import FederatedModel
-from forcha.utils.optimizers import Optimizers
-from forcha.utils.computations import Aggregators
 from collections import OrderedDict
+from _collections_abc import Generator
+from forcha.utils.optimizers import Optimizers
 
 
-class Alpha_Amplified():
-    """Alpha-amplification is used to establish the marginal contribution of each sampled
-    client to the general value of the global model. Amplification is based on the assumption
-    that we can detect the influence that a sampled client has on a general model
-    by testing a scenario in which we have more-alike clients included in the sample."""
+class Sample_LOO_Evaluator():
+    """Sample evaluator is used to establish the marginal contribution of each sampled
+    client to the general value of the global model. Basic Sample Evaluator is able to
+    assess the Leave-one-out value for every client included in the sample. It is also
+    able to sum the marginal values to obain a final Leave-one-out value."""
     
     def __init__(self,
                  nodes: list,
                  iterations: int) -> None:
-        """Constructor for the Alpha-Amplification. Initializes empty
-        hash tables for Amplification value for each iteration as well as hash table
-        for final values.
+        """Constructor for the Sample Evaluator Class. Initializes empty
+        hash tables for LOO value for each iteration as well as hash table
+        for final LOO values.
         
         Parameters
         ----------
@@ -30,9 +34,9 @@ class Alpha_Amplified():
         None
         """
         
-        self.alpha = {node: np.float64(0) for node in nodes} # Hash map containing all the nodes and their respective marginal contribution values.
-        self.partial_alpha = {round:{node: np.float64(0) for node in nodes} for round in range(iterations)} # Hash map containing all the partial psi for each sampled subset.
-    
+        self.psi = {node: np.float64(0) for node in nodes} # Hash map containing all the nodes and their respective marginal contribution values.
+        self.partial_psi = {round:{node: np.float64(0) for node in nodes} for round in range(iterations)} # Hash map containing all the partial psi for each sampled subset.
+
 
     def evaluate_round(
         self,
@@ -42,7 +46,6 @@ class Alpha_Amplified():
         nodes_in_sample: list,
         optimizer: Optimizers,
         iteration: int,
-        search_length: int,
         final_model: OrderedDict,
         previous_model: OrderedDict,
         return_coalitions: bool = True
@@ -51,13 +54,13 @@ class Alpha_Amplified():
         Given the graidnets, ids of the nodes included in sample,
         last version of the optimizer, previous version of the model
         and the updated version of the model, it calculates values of
-        all the marginal contributions using alpha-amplification.
+        all the marginal contributions using Leave-one-out method.
         
         Parameters
         ----------
         model_temmplate: FederatedModel
             A template of the FederatedModel object used during the simulation.
-        optimizer_template:
+        optimizer_template: Optimizers
             A template of the Optimizer object used during the simulation.     
         gradients: OrderedDict
             An OrderedDict containing gradients of the sampled nodes.
@@ -67,8 +70,6 @@ class Alpha_Amplified():
             An instance of the forcha.Optimizers class.
         iteration: int
             The current iteration.
-        search_length: int
-            The search length for alpha amplification
         final_model: FederatedModel
             An instance of the FederatedModel object.
         previous_model: FederatedModel
@@ -81,6 +82,7 @@ class Alpha_Amplified():
         """
         
         recorded_values = {}
+        
         model_template.update_weights(final_model)
         final_model_score = model_template.evaluate_model()[1]
         recorded_values[tuple(gradients.keys())] = final_model_score
@@ -88,44 +90,24 @@ class Alpha_Amplified():
         for node in nodes_in_sample:
             node_id = node.node_id
             gradients_copy = copy.deepcopy(gradients)
-            del gradients_copy[node_id]   
+            del gradients_copy[node_id]
             optimizer_template.set_weights(previous_delta=copy.deepcopy(optimizer[0]),
                                            previous_momentum=copy.deepcopy(optimizer[1]),
                                            learning_rate=copy.deepcopy(optimizer[2]))
-            
-            for phi in range(search_length):
-                gradients_copy[(f"{phi + 1}_of_{node.node_id}")] = copy.deepcopy(gradients[node.node_id])
-            
             grad_avg = Aggregators.compute_average(gradients_copy)
-            weights = optimizer_template.fed_optimize(
-                weights=copy.deepcopy(previous_model),
-                delta=grad_avg)
+            weights = optimizer_template.fed_optimize(weights=copy.deepcopy(previous_model),
+                                                      delta = grad_avg)
             model_template.update_weights(weights)
-            appended_score = model_template.evaluate_model()[1]
+            score = model_template.evaluate_model()[1]
             
-            self.partial_alpha[iteration][node_id] = final_model_score - appended_score
-            recorded_values[tuple(gradients_copy.keys())] = appended_score 
-            print(f"Evaluated alpha-amplication score of client {node_id}")
-       
+            self.partial_psi[iteration][node_id] = final_model_score - score
+            recorded_values[tuple(gradients_copy.keys())] = score
+            print(f"Evaluated LOO score of client {node_id}")
+            
         if return_coalitions == True:
             return recorded_values
-    
-    def return_last_value(self,
-                          iteration:int) -> dict:
-        """Method used to return the results of the last evaluation round.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        -------
-        tuple[dict[int: dict], dict[int: float]]
-        """
-        values = self.partial_alpha[iteration]
-        return values
-        
-    
+
+
     def calculate_final_result(self) -> tuple[dict[int: dict], dict[int: float]]:
         """Method used to sum up all the partial LOO scores to obtain
         a final LOO score for each client.
@@ -139,8 +121,7 @@ class Alpha_Amplified():
         tuple[dict[int: dict], dict[int: float]]
         """
         
-        for iteration_results in self.partial_alpha.values():
+        for iteration_results in self.partial_psi.values():
             for node, value in iteration_results.items():
-                self.alpha[node] += np.float64(value)
-        return (self.partial_alpha, self.alpha)
-
+                self.psi[node] += np.float64(value)
+        return (self.partial_psi, self.psi)

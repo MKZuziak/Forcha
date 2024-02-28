@@ -304,7 +304,8 @@ class FederatedModel:
         Parameters
         ----------
         avg_tensors: Ordered_Dict
-            An Ordered Dictionary containing a averaged tensors
+            An Ordered Dictionary containing a averaged tensors. Copied for the 
+            particular node.
         
         Raises
         ------
@@ -314,7 +315,7 @@ class FederatedModel:
         -------
         None
         """
-        self.net.load_state_dict(avg_tensors, strict=True)
+        self.net.load_state_dict(copy.deepcopy(avg_tensors), strict=True)
 
 
     def store_model_on_disk(
