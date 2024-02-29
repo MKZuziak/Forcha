@@ -94,7 +94,7 @@ class Subsets:
             for subset in itertools.combinations(elements, l):
                 superset.append(list(subset))
         if remove_empty == True:
-            superset.pop(0)
+            superset.pop(0) # Removes zero from the superset, as this can not serve as a base for model training.
         
         if return_dict == True:
             superset = {tuple(coalition): None for coalition in superset}
@@ -126,8 +126,10 @@ class Subsets:
             return loo_set
 
 
-    def select_subsets(coalitions: dict | list,
-                       searched_node: int) -> dict[tuple : Any]:
+    def select_subsets(
+        coalitions: dict | list,
+        searched_node: int
+        ) -> dict[tuple : Any]:
         """Given a dict or list of possible coalitions and a searched node, will return
         every possible coalition which DO NOT CONTAIN the searche node.
         -------------

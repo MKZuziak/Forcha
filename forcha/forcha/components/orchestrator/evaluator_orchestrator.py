@@ -99,7 +99,7 @@ class Evaluator_Orchestrator(Orchestrator):
             self.evaluation_manager = Evaluation_Manager(
                 settings = self.settings,
                 model_template = self.central_model,
-                optimizer_template = self.Optimizer,
+                optimizer_template = self.optimizer,
                 nodes = [node.node_id for node in self.network],
                 iterations = self.iterations,
                 full_debug = self.full_debug

@@ -65,15 +65,16 @@ def select_gradients(
     Generator
         A generator object that can be iterated to obtain chunks of the original iterable.
     """
-    q_gradients = {}
+    selected_gradients = {}
     if in_place == False:
-        gradients_copy = copy.deepcopy(gradients) #TODO: Inspect whether making copy is realy necc.
-        return gradients_copy
+        for node_id, gradient in gradients.items():
+            if node_id in query:
+                selected_gradients[node_id] = copy.deepcopy(gradient)
     else:
-        for id, grad in gradients.items():
-            if id in query:
-                q_gradients[id] = grad
-        return q_gradients
+        for node_id, gradient in gradients.items():
+            if node_id in query:
+                selected_gradients[node_id] = gradient
+    return selected_gradients
 
 
 class Sample_Shapley_Evaluator():
@@ -157,6 +158,7 @@ class Sample_Shapley_Evaluator():
 
         # Maps every coalition to it's value, implemented to decrease the time complexity.
         recorded_values = {}
+        # recorded_values['zero_vector'] = 1 / len(list(gradients[0].values())[-1]) # value of a random guess, 1/ len(networks_last_layer)
         
         # Converting list of FederatedNode objects to the int representing their identiity.
         nodes_in_sample = [node.node_id for node in nodes_in_sample] 
@@ -166,12 +168,14 @@ class Sample_Shapley_Evaluator():
         for node in nodes_in_sample:
             shap = 0.0
             # Select subsets that do not contain agent i
-            coalitions = Subsets.select_subsets(coalitions = superset, searched_node = node)
+            coalitions = Subsets.select_subsets(
+                coalitions = superset, 
+                searched_node = node
+                )
+            
             for coalition in coalitions.keys():
                 coalition_without_client = tuple(sorted(coalition))
                 coalition_with_client = tuple(sorted(coalition + (node, )))
-                
-
                 # Evaluating the performance of the model trained without client i
                 # Check if already calculated in another pass
                 if recorded_values.get(coalition_without_client):
@@ -180,7 +184,7 @@ class Sample_Shapley_Evaluator():
                 else:
                     print(f"{operation_counter} of {number_of_operations}: forming and evaluating subset {coalition_without_client}")
                     coalitions_gradients = select_gradients(
-                        gradients = gradients, 
+                        gradients = gradients,
                         query = coalition_without_client
                         )
                     optimizer_template.set_weights(
@@ -194,10 +198,9 @@ class Sample_Shapley_Evaluator():
                         delta = grad_avg
                         )
                     model_template.update_weights(weights)
-                    coalition_without_client_score = model_template.evaluate_model()
-                    recorded_values[coalition_without_client_score] = coalition_without_client_score
+                    coalition_without_client_score = model_template.evaluate_model()[1]
+                    recorded_values[coalition_without_client] = coalition_without_client_score
                     operation_counter += 1
-
                 # Evaluating the performance of the model trained with client i
                 # Check if already calculated in another pass
                 if recorded_values.get(coalition_with_client):
@@ -220,17 +223,44 @@ class Sample_Shapley_Evaluator():
                         delta = grad_avg
                         )
                     model_template.update_weights(weights)
-                    coalition_with_client_score = model_template.evaluate_model()
-                    recorded_values[coalition_with_client_score] = coalition_with_client_score
+                    coalition_with_client_score = model_template.evaluate_model()[1]
+                    recorded_values[coalition_with_client] = coalition_with_client_score
                     operation_counter += 1
-                
                 possible_combinations = math.comb((len(nodes_in_sample) - 1), len(coalition_without_client)) # Find the total number of possibilities to choose k things from n items:
                 divisor = 1 / possible_combinations
                 shap += divisor * (coalition_with_client_score - coalition_without_client_score)
+            
+            # # Calculating zero coalition - random guess
+            # coalition_without_client_score = recorded_values['zero_vector']
+            # coalition_with_client = (node, )
+            # if recorded_values.get(coalition_with_client):
+            #     coalition_with_client_score = recorded_values[coalition_with_client]
+            # else:
+            #     print(f"{operation_counter} of {number_of_operations}: forming and evaluating subset {coalition_with_client}")
+            #     coalitions_gradients = select_gradients(
+            #         gradients = gradients, 
+            #         query = coalition_with_client
+            #         )
+            #     optimizer_template.set_weights(
+            #         previous_delta=copy.deepcopy(optimizer[0]),
+            #         previous_momentum=copy.deepcopy(optimizer[1]),
+            #         learning_rate=copy.deepcopy(optimizer[2])
+            #         )
+            #     grad_avg = Aggregators.compute_average(coalitions_gradients)
+            #     weights = optimizer_template.fed_optimize(
+            #         weights=copy.deepcopy(previous_model),
+            #         delta = grad_avg
+            #         )
+            #     model_template.update_weights(weights)
+            #     coalition_with_client_score = model_template.evaluate_model()[1]
+            #     recorded_values[coalition_with_client] = coalition_with_client_score
+            #     operation_counter += 1
+            
+            shap += coalition_with_client_score - coalition_without_client_score
             self.partial_shapley[iteration][node] =  shap / (len(nodes_in_sample))
 
-            if return_coalitions == True:
-                return recorded_values
+        if return_coalitions == True:
+            return recorded_values
         
 
     # def update_shap_multip(self,

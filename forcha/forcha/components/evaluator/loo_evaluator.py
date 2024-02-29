@@ -103,9 +103,8 @@ class Sample_LOO_Evaluator():
             score = model_template.evaluate_model()[1]
             
             self.partial_psi[iteration][node_id] = final_model_score - score
-            recorded_values[tuple(gradients_copy.keys())] = score
+            recorded_values[tuple(sorted(gradients_copy.keys()))] = score
             print(f"Evaluated LOO score of client {node_id}")
-            
         if return_coalitions == True:
             return recorded_values
 

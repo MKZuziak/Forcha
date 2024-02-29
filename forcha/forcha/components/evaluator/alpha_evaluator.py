@@ -12,9 +12,11 @@ class Alpha_Amplified():
     that we can detect the influence that a sampled client has on a general model
     by testing a scenario in which we have more-alike clients included in the sample."""
     
-    def __init__(self,
-                 nodes: list,
-                 iterations: int) -> None:
+    def __init__(
+        self,
+        nodes: list,
+        iterations: int
+        ) -> None:
         """Constructor for the Alpha-Amplification. Initializes empty
         hash tables for Amplification value for each iteration as well as hash table
         for final values.
@@ -25,13 +27,14 @@ class Alpha_Amplified():
             A list containing ids of all the nodes engaged in the training.
         iterations: int
             A number of training iterations
+        
         Returns
         -------
         None
         """
         
         self.alpha = {node: np.float64(0) for node in nodes} # Hash map containing all the nodes and their respective marginal contribution values.
-        self.partial_alpha = {round:{node: np.float64(0) for node in nodes} for round in range(iterations)} # Hash map containing all the partial psi for each sampled subset.
+        self.partial_alpha = {round:{node: np.float64(0) for node in nodes} for round in range(iterations)} # Hash map containing all the partial alpha scores for each sampled subset.
     
 
     def evaluate_round(
@@ -110,8 +113,10 @@ class Alpha_Amplified():
         if return_coalitions == True:
             return recorded_values
     
-    def return_last_value(self,
-                          iteration:int) -> dict:
+    def return_last_value(
+        self,
+        iteration:int
+        ) -> dict:
         """Method used to return the results of the last evaluation round.
         
         Parameters

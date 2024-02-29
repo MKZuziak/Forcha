@@ -86,19 +86,19 @@ class Evaluation_Manager():
         # Sets up a flag for each available method of evaluation.
         self.compiled_flags = []
         # Flag: LOO-InSample Method
-        if settings.LooSample:
+        if settings.in_sample_loo:
             self.flag_sample_evaluator = True
             self.compiled_flags.append('in_sample_loo')
         else:
             self.flag_sample_evaluator = False
         # Flag: Shapley-InSample Method
-        if settings.ShapleySample:
+        if settings.in_sample_shap:
             self.flag_samplesh_evaluator = True
             self.compiled_flags.append('in_sample_shap')
         else:
             self.flag_samplesh_evaluator = False
         # Flag: Alpha-Amplification
-        if settings.AlphaSample:
+        if settings.in_sample_alpha:
             self.flag_alpha_evaluator = True
             self.compiled_flags.append('in_sample_alpha')
         else:
@@ -293,7 +293,7 @@ class Evaluation_Manager():
 
         # In-sample Shapley
         if self.flag_sample_evaluator:
-            if iteration in self.scheduler['in_sample_shapley']: # Checks scheduler
+            if iteration in self.scheduler['in_sample_shap']: # Checks scheduler
                 debug_values = self.shapley_evaluator.evaluate_round(
                     model_template = self.model_template,
                     optimizer_template = self.optimizer_template,
@@ -310,7 +310,7 @@ class Evaluation_Manager():
                         save_coalitions(
                             values=debug_values,
                             path=self.settings.results_path,
-                            name='col_values_loo_debug.csv',
+                            name='col_values_shapley_debug.csv',
                             iteration=iteration,
                             mode=0
                             )
@@ -318,7 +318,7 @@ class Evaluation_Manager():
                         save_coalitions(
                             values=debug_values,
                             path=self.settings.results_path,
-                            name='col_values_loo_debug.csv',
+                            name='col_values_shapley_debug.csv',
                             iteration=iteration,
                             mode=1
                             )
@@ -392,7 +392,7 @@ class Evaluation_Manager():
             results['full']['loo'] = psi
         
         if self.flag_samplesh_evaluator:
-            partial_shap, shap = self.samplesh_evaluator.calculate_final_result()
+            partial_shap, shap = self.shapley_evaluator.calculate_final_result()
             results['partial']['partial_shap'] = partial_shap
             results['full']['shap'] = shap
         
