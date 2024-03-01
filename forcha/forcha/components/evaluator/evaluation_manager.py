@@ -292,7 +292,7 @@ class Evaluation_Manager():
                             )
 
         # In-sample Shapley
-        if self.flag_sample_evaluator:
+        if self.flag_samplesh_evaluator:
             if iteration in self.scheduler['in_sample_shap']: # Checks scheduler
                 debug_values = self.shapley_evaluator.evaluate_round(
                     model_template = self.model_template,

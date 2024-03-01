@@ -23,10 +23,12 @@ class Fedopt_Orchestrator(Orchestrator):
         - pseudo-gradients from the models and momentum."""
     
 
-    def __init__(self, 
-                 settings: Settings,
-                 **kwargs
-                 ) -> None:
+    def __init__(
+        self, 
+        settings: Settings,
+        number_of_workers: int = 20,
+        **kwargs
+        ) -> None:
         """Orchestrator is initialized by passing an instance
         of the Settings object. Settings object contains all the relevant configurational
         settings that an instance of the Orchestrator object may need to complete the simulation.
@@ -44,7 +46,10 @@ class Fedopt_Orchestrator(Orchestrator):
         -------
         None
         """
-        super().__init__(settings, **kwargs)
+        super().__init__(
+            settings,
+            number_of_workers 
+            **kwargs)
     
 
     def train_protocol(self) -> None:

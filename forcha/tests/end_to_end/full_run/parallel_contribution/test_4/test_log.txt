@@ -1,0 +1,7 @@
+1. Alpha and LOO values should not be the same
+2. Shapley value should not be the same with LOO and Alpha
+3. Values for the two first datasets should be the same
+4. Values for the third and foruth datasets should be the same
+5. Value of all coalitions should be the same
+6. Code functionality when the sample number of workers is smaller than the sample size
+7. Memory footprint should stabilize after N round

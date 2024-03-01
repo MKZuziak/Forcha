@@ -3,6 +3,7 @@ from multiprocessing import Pool, set_start_method
 
 # from forcha.components.evaluator.parallel.parallel_manager import Parallel_Manager
 from forcha.components.evaluator.evaluation_manager import Evaluation_Manager
+from forcha.components.evaluator.parallel.parallel_manager import Parallel_Manager
 from forcha.components.orchestrator.generic_orchestrator import Orchestrator
 from forcha.utils.optimizers import Optimizers
 from forcha.utils.computations import Aggregators
@@ -27,7 +28,8 @@ class Evaluator_Orchestrator(Orchestrator):
     
     def __init__(
         self, 
-        settings: Settings, 
+        settings: Settings,
+        number_of_workers: int = 20,
         **kwargs
         ) -> None:
         """Orchestrator is initialized by passing an instance
@@ -49,7 +51,10 @@ class Evaluator_Orchestrator(Orchestrator):
         -------
         None
         """
-        super().__init__(settings, **kwargs)
+        super().__init__(
+            settings, 
+            number_of_workers,
+            **kwargs)
     
 
     def train_protocol(self) -> None:
@@ -88,13 +93,14 @@ class Evaluator_Orchestrator(Orchestrator):
         ########################################################
         # FEDOPT EVALUATOR - CREATE EVALUATION MANAGER INSTANCE
         if self.parallelization:
-            # evaluation_manager = Parallel_Manager(settings = self.settings,
-            #                                       model_template = copy.deepcopy(self.central_model),
-            #                                       optimizer_template = copy.deepcopy(self.Optimizer),
-            #                                       nodes = [node.node_id for node in self.network],
-            #                                       iterations = self.iterations,
-            #                                       full_debug = self.full_debug)
-            self.evaluation_manager = None
+            self.evaluation_manager = Parallel_Manager(
+                settings = self.settings,
+                model_template = self.central_model,
+                optimizer_template = self.optimizer,
+                nodes = [node.node_id for node in self.network],
+                iterations = self.iterations,
+                full_debug = self.full_debug,
+                number_of_workers = self.number_of_workers)
         else:
             self.evaluation_manager = Evaluation_Manager(
                 settings = self.settings,

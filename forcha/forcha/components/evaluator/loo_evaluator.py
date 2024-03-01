@@ -97,8 +97,10 @@ class Sample_LOO_Evaluator():
                                            previous_momentum=copy.deepcopy(optimizer[1]),
                                            learning_rate=copy.deepcopy(optimizer[2]))
             grad_avg = Aggregators.compute_average(gradients_copy)
-            weights = optimizer_template.fed_optimize(weights=copy.deepcopy(previous_model),
-                                                      delta = grad_avg)
+            weights = optimizer_template.fed_optimize(
+                weights=copy.deepcopy(previous_model),
+                delta = grad_avg
+                )
             model_template.update_weights(weights)
             score = model_template.evaluate_model()[1]
             

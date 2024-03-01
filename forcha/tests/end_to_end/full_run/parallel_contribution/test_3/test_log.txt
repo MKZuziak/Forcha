@@ -1,0 +1,5 @@
+1. Alpha and LOO values should not be the same
+2. Shapley value should not be the same with LOO and Alpha
+3. Value of all coalitions should be the same
+4. Memory footprint should stabilize after N round
+5. Code functionality when the sample number of workers is smaller than the sample size

@@ -51,10 +51,12 @@ class Orchestrator():
         """
     
     
-    def __init__(self, 
-                 settings: Settings,
-                 **kwargs
-                 ) -> None:
+    def __init__(
+        self, 
+        settings: Settings,
+        number_of_workers: int = 20,
+        **kwargs
+        ) -> None:
         """Orchestrator is initialized by passing an instance
         of the Settings object. Settings object contains all the relevant configurational
         settings that an instance of the Orchestrator object may need to complete the simulation.
@@ -90,6 +92,7 @@ class Orchestrator():
             self.parallelization = True
         else:
             self.parallelization = False
+        self.number_of_workers = number_of_workers
         self.orchestrator_logger = Loggers.orchestrator_logger()
         
         # Initialization of the generator object    
