@@ -1,4 +1,4 @@
-1. Alpha and LOO values should be the same
-2. Shapley value should not be the same
-3. Value of all coalitions should be the same
-4. Memory footprint should stabilize after N round
+1. Alpha and LOO values should be the same [PASSED]
+2. Shapley value should not be the same [PASSED]
+3. Value of all coalitions should be the same [PASSED]
+4. Memory footprint should stabilize after N round [PASSED]

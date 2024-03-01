@@ -1,0 +1,6 @@
+1. Alpha and LOO values should not be the same [PASSED]
+2. Shapley value should not be the same with LOO and Alpha [PASSED] 
+3. Values for the two first datasets should be the same [PASSED]
+4. Values for the third and foruth datasets should be the same [PASSED]
+5. Value of all coalitions should be the same [PASSED]
+6. Memory footprint should stabilize after N round [PASSED]
