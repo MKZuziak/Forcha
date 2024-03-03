@@ -15,6 +15,7 @@ class Settings():
                 save_nodes_models: bool = False,
                 save_central_model: bool = False,
                 save_training_metrics: bool = True,
+                root_name : str = os.getcwd(),
                 **kwargs) -> None:
         """Initialization of an instance of the Settings object. Requires choosing the initialization method.
         Can be initialized either from a dictionary containing all the relevant key-words or from the 
@@ -47,7 +48,9 @@ class Settings():
         self.save_central_model = save_central_model
         self.save_training_metrics = save_training_metrics
 
-        self.orchestrator_model_path, self.nodes_model_path, self.results_path = self.form_archive()
+        self.orchestrator_model_path, self.nodes_model_path, self.results_path = self.form_archive(
+            root_name = root_name
+        )
         for k in kwargs.keys():
             if k in acceptable_keys_list:
                 self.__setattr__(k, kwargs[k])
@@ -56,11 +59,13 @@ class Settings():
         self.print_nodes_template()
     
 
-    def form_archive(self):
-        root_name = os.getcwd()
+    def form_archive(
+        self,
+        root_name: str
+        ):
         time_tuple = time.localtime()
         time_string = time.strftime("%m_%d_%Y__%H_%M_%S", time_tuple)
-        root_name = os.path.join(os.getcwd(), f"archiver_from_{time_string}")
+        root_name = os.path.join(root_name, f"archiver_from_{time_string}")
         
         counter = 1
         while os.path.exists(root_name):

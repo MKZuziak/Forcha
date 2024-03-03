@@ -1,3 +1,5 @@
+import os
+
 from forcha.components.settings.fedopt_settings import FedoptSettings
 
 class EvaluatorSettings(FedoptSettings):
@@ -23,6 +25,7 @@ class EvaluatorSettings(FedoptSettings):
                  in_sample_shap: bool = False,
                  line_search_length: int = 1,
                  scheduler = None,
+                 root_name : str = os.getcwd(),
                  **kwargs) -> None:
         """Initialization of an instance of the FedoptSettings object. Requires choosing the initialization method.
         Can be initialized either from a dictionary containing all the relevant key-words or from the 
@@ -60,6 +63,7 @@ class EvaluatorSettings(FedoptSettings):
             b1 = b1,
             b2 = b2,
             tau = tau,
+            root_name = root_name,
             **kwargs
         )
 

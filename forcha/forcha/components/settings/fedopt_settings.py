@@ -1,3 +1,4 @@
+import os
 from forcha.exceptions.settingexception import SettingsObjectException
 from forcha.components.settings.settings import Settings
 
@@ -19,6 +20,7 @@ class FedoptSettings(Settings):
                  b1: float = 0,
                  b2: float = 0,
                  tau: float = 0,
+                root_name : str = os.getcwd(),
                  **kwargs) -> None:
         """Initialization of an instance of the FedoptSettings object. Requires choosing the initialization method.
         Can be initialized either from a dictionary containing all the relevant key-words or from the 
@@ -51,6 +53,7 @@ class FedoptSettings(Settings):
             save_nodes_models = save_nodes_models,
             save_central_model = save_central_model,
             save_training_metrics = save_training_metrics,
+            root_name = root_name,
             **kwargs
         )
         self.global_optimizer = global_optimizer

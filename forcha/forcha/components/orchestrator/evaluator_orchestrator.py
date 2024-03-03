@@ -241,6 +241,11 @@ class Evaluator_Orchestrator(Orchestrator):
                         logger = self.orchestrator_logger,
                         saving_path = self.settings.results_path,
                         file_name = "global_model_on_nodes.csv")
+            if self.settings.save_central_model:
+                self.central_model.store_model_on_disk(
+                    iteration=iteration,
+                    path=self.settings.orchestrator_model_path
+                )
             ########################################################
             
             ########################################################
