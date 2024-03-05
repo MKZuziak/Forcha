@@ -38,14 +38,29 @@ class Evaluator_Orchestrator(Orchestrator):
         Evaluator Orchestrator additionaly requires a configurations passed to the Optimizer 
         and Evaluator Manager upon its initialization.
         
-        Parameters
+        Attributes
         ----------
-        settings : Settings
-            An instance of the settings object cotaining all the settings 
-            of the orchestrator.
-        **kwargs : dict, optional
-            Extra arguments to enable selected features of the Orchestrator.
-            passing full_debug to **kwargs, allow to enter a full debug mode.
+        settings: Forcha.settings.Settings
+            A settings object containing all the settings used during the simulation.
+        net: nn.Module
+            A template of the neural network architecture that is loaded into FederatedModel.
+        central_model: forcha.models.federated_model.FederatedModel
+            A FederatedModel object attached to the orchestrator.
+        orchestrator_logger: forcha.utils.loggers.Loggers
+            A pre-configured logger attached to the Orchestrator.
+        validation_data: datasets.arrow_dataset.Dataset
+            A datasets.arrow_dataset.Dataset with validation data for the Orchestrator.
+        full_debug: Bool
+            A boolean flag enabling full debug mode of the orchestrator (default to False).
+        batch_job: Bool
+            A boolean flag diasbling simultaneous training of the clients (default to False).
+        (optional) batch: int
+            If batch_job is set to True, this will be a number of clients allowed
+            to train simultaneously.
+        parallelization: Bool
+            A boolean flag enabling parallelization of certain operations (default to False)
+        generator: np.random.default_rng
+            A random number generator attached to the Orchestrator.
 
         Returns
         -------

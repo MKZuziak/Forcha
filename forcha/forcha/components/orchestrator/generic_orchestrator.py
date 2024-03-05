@@ -1,18 +1,20 @@
-import datasets 
 import copy
+from multiprocessing import Pool
+
+import numpy as np
+from torch import nn
+import datasets 
+
 from forcha.components.nodes.federated_node import FederatedNode
 from forcha.models.federated_model import FederatedModel
 from forcha.utils.computations import Aggregators
 from forcha.utils.loggers import Loggers
-from forcha.utils.orchestrations import create_nodes, check_health, sample_nodes, train_nodes
+from forcha.utils.orchestrations import sample_nodes, train_nodes
 from forcha.components.settings.settings import Settings
 from forcha.utils.debugger import log_gpu_memory
 from forcha.utils.helpers import Helpers
 from forcha.utils.handlers import save_csv_file, save_model_metrics, save_training_metrics
-import numpy as np
-from multiprocessing import Pool
-from torch import nn
-from typing import Union
+
 
 # set_start_method set to 'spawn' to ensure compatibility across platforms.
 from multiprocessing import set_start_method
@@ -99,10 +101,11 @@ class Orchestrator():
         self.generator = np.random.default_rng(self.settings.simulation_seed)
     
     
-    def prepare_orchestrator(self, 
-                             model: nn,
-                             validation_data: datasets.arrow_dataset.Dataset,
-                             ) -> None:
+    def prepare_orchestrator(
+        self, 
+        model: nn,
+        validation_data: datasets.arrow_dataset.Dataset,
+        ) -> None:
         """Loads the orchestrator's test data and creates an instance
         of the Federated Model object that will be used throughout the training.
         
@@ -126,9 +129,11 @@ class Orchestrator():
             node_name='orchestrator')
     
     
-    def prepare_training(self,
-                         nodes_data: list[datasets.arrow_dataset.Dataset,
-                                          datasets.arrow_dataset.Dataset]) -> None:
+    def prepare_training(
+        self,
+        nodes_data: list[datasets.arrow_dataset.Dataset,
+                         datasets.arrow_dataset.Dataset]
+        ) -> None:
         """Prepares all the necessary elements of the training, including nodes and helpers.
         Must be run before the train_protocol method is invoked.
         
@@ -147,16 +152,6 @@ class Orchestrator():
         self.nodes_number = self.settings.number_of_nodes
         self.sample_size = self.settings.sample_size
         self.nodes_list = [node for node in range(self.nodes_number)]
-        
-        # # Initializing an instance of the Archiver class if enabled in the settings.
-        # if self.enable_archiver:
-        #     self.archive_manager = Archive_Manager(
-        #         archive_manager = self.settings.archiver_settings,
-        #         logger = self.orchestrator_logger
-        #     )
-        
-        # Creating nodes
-        # Creating (empty) federated nodes
         model_list = [copy.deepcopy(self.central_net) for _ in range(self.nodes_number)]
         nodes = [FederatedNode(node_id, 
                                     self.settings,
@@ -166,8 +161,6 @@ class Orchestrator():
                                     save_path=self.settings.nodes_model_path,
                                     seed=self.settings.simulation_seed) 
                       for node_id, model, node_data in zip(self.nodes_list, model_list, nodes_data)]
-        
-        
         self.network = nodes
     
     
@@ -194,13 +187,22 @@ class Orchestrator():
         -------
         int
             Returns 0 on the successful completion of the training."""
+        # BEGINING OF TRAINING
+        ########################################################
+        ########################################################
+        ########################################################
+        
         # TRAINING PHASE ----- FEDAVG
-        # FEDAVG - CREATE POOL OF WORKERS
         for iteration in range(self.iterations):
+            # BEGINING OF ITERATION
+            ########################################################
+            ########################################################
             self.orchestrator_logger.info(f"Iteration {iteration}")
+            
+            ########################################################
+            # FEDAVG - INIT PHASE
             weights = {}
             training_results = {}
-            
             # Checking for connectivity
             connected_nodes = [node for node in self.network]
             if len(connected_nodes) < self.sample_size:
@@ -208,25 +210,29 @@ class Orchestrator():
                 continue
             else:
                 self.orchestrator_logger.info(f"Nodes connected at round {iteration}: {[node.node_id for node in connected_nodes]}")
-            
             # Weights dispatched before the training
             self.orchestrator_logger.info(f"Iteration {iteration}, dispatching nodes to connected clients.")
             for node in connected_nodes:
                 node.model.update_weights(copy.deepcopy(self.central_model.get_weights()))
+            ########################################################
             
-            # Sampling nodes and asynchronously apply the function
+            ########################################################
+            # FEDAVG - SAMPLING PHASE
             sampled_nodes = sample_nodes(
                 nodes = connected_nodes, 
                 sample_size = self.sample_size,
                 generator = self.generator
                 ) # SAMPLING FUNCTION
+            ########################################################
+            
+            ########################################################
             # FEDAVG - TRAINING PHASE
-            # OPTION: BATCH TRAINING
+            # FEDAVG OPTION I: BATCH TRAINING
             if self.batch_job:
                 self.orchestrator_logger.info(f"Entering batched job, size of the batch {self.batch}")
                 for batch in Helpers.chunker(sampled_nodes, size=self.batch):
                     with Pool(len(list(batch))) as pool:
-                        results = [pool.apply_async(train_nodes, (node, iteration)) for node in batch]
+                        results = [pool.apply_async(train_nodes, (node, iteration, 'weights')) for node in batch]
                         for result in results:
                             node_id, model_weights, loss_list, accuracy_list = result.get()
                             weights[node_id] = model_weights
@@ -236,7 +242,7 @@ class Orchestrator():
                                 "loss": loss_list[-1], 
                                 "accuracy": accuracy_list[-1]
                                 }
-            # OPTION: NON-BATCH TRAINING
+            # FEDAVG OPTION II: BATCH TRAINING
             else:
                 with Pool(self.sample_size) as pool:
                     results = [pool.apply_async(train_nodes, (node, iteration)) for node in sampled_nodes]
@@ -249,8 +255,10 @@ class Orchestrator():
                                 "loss": loss_list[-1], 
                                 "accuracy": accuracy_list[-1]
                                 }
-            # TRAINING AND TESTING RESULTS BEFORE THE MODEL UPDATE
-            # METRICS: PRESERVING TRAINING ON NODES RESULTS
+            ########################################################
+            
+            ########################################################
+            # FEDAVG - TESTING RESULTS BEFORE THE MODEL UPDATE PHASE
             if self.settings.save_training_metrics:
                 save_training_metrics(
                     file = training_results,
@@ -266,16 +274,19 @@ class Orchestrator():
                         saving_path = self.settings.results_path,
                         file_name = 'local_model_on_nodes.csv'
                         )
-                    
-            # FEDAVG: AGGREGATING FUNCTION
+            ########################################################
+            
+            ########################################################
+            # FEDAVG: AGGREGATING AND CENTRAL UPDATE
             avg = Aggregators.compute_average(copy.deepcopy(weights)) # AGGREGATING FUNCTION
-            # FEDAVG: UPDATING THE NODES
+            self.central_model.update_weights(copy.deepcopy(avg))
+            ########################################################
+            
+            ########################################################
+            # FEDAVG - UPDATING THE NODES AND SAVE RESULTS
             for node in connected_nodes:
                 node.model.update_weights(copy.deepcopy(avg))
-            # FEDAVG: UPDATING THE CENTRAL MODEL 
             self.central_model.update_weights(copy.deepcopy(avg))
-
-            # TESTING RESULTS AFTER THE MODEL UPDATE
             if self.settings.save_training_metrics:
                 save_model_metrics(
                     iteration = iteration,
@@ -291,6 +302,11 @@ class Orchestrator():
                         logger = self.orchestrator_logger,
                         saving_path = self.settings.results_path,
                         file_name = "global_model_on_nodes.csv")
+            ########################################################
+            
+            ########################################################
+            ########################################################
+            # END OF ITERATION
                             
             if self.full_debug == True:
                 log_gpu_memory(iteration=iteration)
