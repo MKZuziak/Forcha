@@ -25,7 +25,18 @@ class Orchestrator():
     """Orchestrator is a central object necessary for performing the simulation.
         It connects the nodes, maintain the knowledge about their state and manages the
         multithread pool. generic_orchestrator.orchestrator is a parent to all more
-        specific orchestrators.
+        specific orchestrators."""
+
+
+    def __init__(
+        self, 
+        settings: Settings,
+        number_of_workers: int = 20,
+        **kwargs
+        ) -> None:
+        """Orchestrator is initialized by passing an instance
+        of the Settings object. Settings object contains all the relevant configurational
+        settings that an instance of the Orchestrator object may need to complete the simulation.
         
         Attributes
         ----------
@@ -50,18 +61,6 @@ class Orchestrator():
             A boolean flag enabling parallelization of certain operations (default to False)
         generator: np.random.default_rng
             A random number generator attached to the Orchestrator.
-        """
-    
-    
-    def __init__(
-        self, 
-        settings: Settings,
-        number_of_workers: int = 20,
-        **kwargs
-        ) -> None:
-        """Orchestrator is initialized by passing an instance
-        of the Settings object. Settings object contains all the relevant configurational
-        settings that an instance of the Orchestrator object may need to complete the simulation.
         
         Parameters
         ----------
@@ -205,12 +204,6 @@ class Orchestrator():
             training_results = {}
             # Checking for connectivity
             connected_nodes = [node for node in self.network]
-            if len(connected_nodes) < self.sample_size:
-                self.orchestrator_logger.warning(f"Not enough connected nodes to draw a full sample! Skipping an iteration {iteration}")
-                continue
-            else:
-                self.orchestrator_logger.info(f"Nodes connected at round {iteration}: {[node.node_id for node in connected_nodes]}")
-            # Weights dispatched before the training
             self.orchestrator_logger.info(f"Iteration {iteration}, dispatching nodes to connected clients.")
             for node in connected_nodes:
                 node.model.update_weights(copy.deepcopy(self.central_model.get_weights()))
@@ -304,13 +297,13 @@ class Orchestrator():
                         file_name = "global_model_on_nodes.csv")
             ########################################################
             
+            if self.full_debug == True:
+                log_gpu_memory(iteration=iteration)
             ########################################################
             ########################################################
             # END OF ITERATION
                             
-            if self.full_debug == True:
-                log_gpu_memory(iteration=iteration)
-
+        ########################################################
         self.orchestrator_logger.critical("Training complete")
         return 0
                         
