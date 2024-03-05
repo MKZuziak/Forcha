@@ -1,5 +1,8 @@
 import copy
 from multiprocessing import Pool, set_start_method
+import os
+
+import torch
 
 # from forcha.components.evaluator.parallel.parallel_manager import Parallel_Manager
 from forcha.components.evaluator.evaluation_manager import Evaluation_Manager
@@ -61,6 +64,15 @@ class Evaluator_Orchestrator(Orchestrator):
             A boolean flag enabling parallelization of certain operations (default to False)
         generator: np.random.default_rng
             A random number generator attached to the Orchestrator.
+            
+        Parameters
+        ----------
+        settings : Settings
+            An instance of the settings object cotaining all the settings 
+            of the orchestrator.
+        **kwargs : dict, optional
+            Extra arguments to enable selected features of the Orchestrator.
+            passing full_debug to **kwargs, allow to enter a full debug mode.
 
         Returns
         -------
@@ -200,6 +212,16 @@ class Evaluator_Orchestrator(Orchestrator):
             
             ########################################################
             # FEDOPT - TESTING RESULTS BEFORE THE MODEL UPDATE PHASE
+            # FEDOPT - SAVING GRADIENTS
+            if self.settings.save_gradients:
+                for node, gradients in gradients:
+                    torch.save(
+                        gradients, 
+                        os.path.join(
+                            self.settings.nodes_model_path,
+                            f'node_{self.node_name}_iteration_{iteration}_gradients.pt'
+                            )
+                        )
             if self.settings.save_training_metrics:
                 save_training_metrics(
                     file = training_results,
@@ -255,7 +277,8 @@ class Evaluator_Orchestrator(Orchestrator):
                         model = node.model,
                         logger = self.orchestrator_logger,
                         saving_path = self.settings.results_path,
-                        file_name = "global_model_on_nodes.csv")
+                        file_name = "global_model_on_nodes.csv"
+                )
             if self.settings.save_central_model:
                 self.central_model.store_model_on_disk(
                     iteration=iteration,
@@ -263,6 +286,8 @@ class Evaluator_Orchestrator(Orchestrator):
                 )
             ########################################################
             
+            if self.full_debug == True:
+                log_gpu_memory(iteration=iteration)    
             ########################################################
             ########################################################
             # END OF ITERATION
@@ -272,8 +297,6 @@ class Evaluator_Orchestrator(Orchestrator):
         self.evaluation_manager.finalize_tracking(path=self.settings.results_path)
         ########################################################
         
-        if self.full_debug == True:
-            log_gpu_memory(iteration=iteration)    
-        # EVALUATOR: PRESERVE RESULTS
+        ########################################################
         self.orchestrator_logger.critical("Training complete")
         return 0
