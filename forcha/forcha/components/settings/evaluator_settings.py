@@ -17,6 +17,7 @@ class EvaluatorSettings(FedoptSettings):
                  save_nodes_models: bool = False,
                  save_central_model: bool = False,
                  save_training_metrics: bool = True,
+                 save_gradients: bool = False,
                  b1: float = 0,
                  b2: float = 0,
                  tau: float = 0,
@@ -58,6 +59,7 @@ class EvaluatorSettings(FedoptSettings):
             save_nodes_models = save_nodes_models,
             save_central_model = save_central_model,
             save_training_metrics = save_training_metrics,
+            save_gradients = save_gradients,
             global_optimizer = global_optimizer,
             global_learning_rate = global_learning_rate,
             b1 = b1,
@@ -94,7 +96,7 @@ class EvaluatorSettings(FedoptSettings):
         b2: {self.b2},
         tau: {self.tau}
         activate LOO evaluation: {self.in_sample_loo},
-        activate ALPHA evaluation: {self.in_sample_shap},
+        activate ALPHA evaluation: {self.in_sample_alpha},
         activate SHAP evaluation: {self.in_sample_shap},
         alpha line search length: {self.line_search_length}
         """
