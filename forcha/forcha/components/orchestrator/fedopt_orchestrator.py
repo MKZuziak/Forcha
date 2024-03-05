@@ -76,7 +76,7 @@ class Fedopt_Orchestrator(Orchestrator):
         """
         super().__init__(
             settings,
-            number_of_workers 
+            number_of_workers,
             **kwargs)
     
 
@@ -176,12 +176,12 @@ class Fedopt_Orchestrator(Orchestrator):
             # FEDOPT - TESTING RESULTS BEFORE THE MODEL UPDATE PHASE
             # FEDOPT - SAVING GRADIENTS
             if self.settings.save_gradients:
-                for node, gradients in gradients:
+                for node, gradient in gradients.items():
                     torch.save(
-                        gradients, 
+                        gradient, 
                         os.path.join(
                             self.settings.nodes_model_path,
-                            f'node_{self.node_name}_iteration_{iteration}_gradients.pt'
+                            f'node_{node}_iteration_{iteration}_gradients.pt'
                             )
                         )
             if self.settings.save_training_metrics:
