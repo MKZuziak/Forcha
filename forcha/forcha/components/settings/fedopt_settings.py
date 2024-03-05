@@ -17,10 +17,11 @@ class FedoptSettings(Settings):
                  save_nodes_models: bool = False,
                  save_central_model: bool = False,
                  save_training_metrics: bool = True,
+                 save_gradients: bool = False,
                  b1: float = 0,
                  b2: float = 0,
                  tau: float = 0,
-                root_name : str = os.getcwd(),
+                 root_name : str = os.getcwd(),
                  **kwargs) -> None:
         """Initialization of an instance of the FedoptSettings object. Requires choosing the initialization method.
         Can be initialized either from a dictionary containing all the relevant key-words or from the 
@@ -61,6 +62,7 @@ class FedoptSettings(Settings):
         self.b1 = b1
         self.b2 = b2
         self.tau = tau
+        self.save_gradients = save_gradients
         self.print_optimizer_template()
 
 
@@ -82,5 +84,6 @@ class FedoptSettings(Settings):
         b1: {self.b1},
         b2: {self.b2},
         tau: {self.tau}
+        save gradients: {self.save_gradients}
         """
         print(string)
