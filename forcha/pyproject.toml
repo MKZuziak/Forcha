@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "forcha"
-version = "0.2.3"
+version = "0.2.4"
 description = ""
 authors = ["Maciej Zuziak <maciejkrzysztof.zuziak@isti.cnr.it>"]
 license = "MIT"
