@@ -399,7 +399,7 @@ class FederatedModel:
             self.optimizer.step()
             
             train_loss += loss.item()
-            _, predicted = outputs.max(1)
+            predicted = torch.nn.functional.softmax(outputs, dim=1).argmax(dim=1)
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
                     
@@ -446,7 +446,7 @@ class FederatedModel:
                 total += targets.size(0)
                 test_loss = criterion(output, targets).item()
                 losses.append(test_loss)
-                pred = output.argmax(dim=1, keepdim=True)
+                pred = torch.nn.functional.softmax(output, dim=1).argmax(dim=1, keepdim=True)
                 correct += pred.eq(targets.view_as(pred)).sum().item()
                 y_pred.append(pred)
                 y_true.append(targets)
@@ -531,7 +531,7 @@ class FederatedModel:
                 loss = criterion(outputs, targets)
                 
                 test_loss += loss.item()
-                _, predicted = outputs.max(1)
+                predicted = torch.nn.functional.softmax(outputs, dim=1).argmax(dim=1, keepdim=True)
                 total += targets.size(0)
                 correct += predicted.eq(targets).sum().item()
         
