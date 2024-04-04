@@ -150,13 +150,14 @@ class FederatedModel:
                 weight_decay = settings.weight_decay
             else:
                 weight_decay = 0
+
             self.optimizer = optim.RMSprop(
                 params_to_update,
                 lr=self.settings.learning_rate,
                 alpha=alpha,
                 weight_decay=weight_decay)
         else:
-            raise ModelException("The provided optimizer name may be incorrect or not implemeneted.\
+            raise ModelException("The provided optimizer name may be incorrect or not implemented.\
             Please provide list[train_set, test_set] or list[test_set]")
         
 
@@ -250,7 +251,7 @@ class FederatedModel:
         return [val.cpu().numpy() for _, val in self.net.state_dict().items()]
 
 
-    def get_weights(self) -> None:
+    def get_weights(self) -> dict:
         """Get the weights of the network.
         
         Parameters
@@ -415,7 +416,7 @@ class FederatedModel:
                 accuracy)
     
 
-    def evaluate_model(self) -> tuple[float, float, float, float, float, list]:
+    def evaluate_model(self):
         """Validate the network on the local test set.
         
         Parameters

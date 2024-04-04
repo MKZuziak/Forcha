@@ -67,7 +67,7 @@ class Aggregators:
 
             distances[node_name] = torch.mean(torch.stack(mean))
 
-        return
+        return distances
     
 
 class Subsets:

@@ -17,7 +17,7 @@ def calculate_alpha(
     previous_model: FederatedModel,
     baseline_score: float,
     model_template: FederatedModel,
-    optimizer_template: OrderedDict,
+    optimizer_template: Optimizers,
     search_length: int
     ) -> tuple[int, dict, float]:
     
@@ -35,7 +35,7 @@ def calculate_alpha(
     # Calculating new score form appended gradients
     grad_avg = Aggregators.compute_average(gradients)
     weights = optimizer_template.fed_optimize(
-        weights=copy.deepcopy(previous_model),
+        weights=copy.deepcopy(previous_model.get_weights()),
         delta = grad_avg
         )
     model_template.update_weights(weights)
@@ -47,7 +47,7 @@ def calculate_alpha(
 
 
 class Parallel_Alpha_Amplified(Alpha_Amplified):
-    
+
     def __init__(
         self, 
         nodes: list, 

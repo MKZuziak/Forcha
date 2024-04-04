@@ -1,13 +1,14 @@
 from collections import OrderedDict
 from torch import zeros
 from torch import rand
+from forcha.components.settings.evaluator_settings import EvaluatorSettings
 import torch
 import copy
 
 class Optimizers():
     def __init__(self,
                  weights: OrderedDict,
-                 settings: dict) -> None:
+                 settings: EvaluatorSettings) -> None:
         # Seting up a device for the Optimizer. Please note, that the device must be the same as this
         # that the nets were placed on. Otherwise, PyTorch will raise an exception trying to combine
         # data placed on CPU and GPU.
@@ -27,14 +28,14 @@ class Optimizers():
             self.b2 = torch.tensor(settings.b2)
             self.tau = torch.tensor(settings.tau)
         else:
-            "Wrong optimizer's name was provided. Unable to retrieve parameters!"
+            raise "Wrong optimizer's name was provided. Unable to retrieve parameters!"
     
     
     def get_weights(self):
         previous_delta = self.previous_delta
         previous_momentum = self.previous_momentum
         learning_rate = self.learning_rate
-        return (previous_delta, previous_momentum, learning_rate)
+        return previous_delta, previous_momentum, learning_rate
     
     
     def set_weights(self,

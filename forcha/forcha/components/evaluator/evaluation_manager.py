@@ -23,7 +23,7 @@ from forcha.utils.csv_handlers import save_coalitions
 class Evaluation_Manager():
     """Evaluation Manager encapsulates the whole process of assessing the marginal
     clients' contributions, so the orchestrator code is free of any encumbrance
-    connected to it. Evaluation Manager life-cycle is splitted into four different
+    connected to it. Evaluation Manager life-cycle is split into four different
     stages: initialization, preservation, tracking and finalization. Initialization
     requires a dictionary containing all the relevant settings. Preservation should
     be called each round before the training commences (so the evaluation manager

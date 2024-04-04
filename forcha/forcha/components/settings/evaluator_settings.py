@@ -30,8 +30,8 @@ class EvaluatorSettings(FedoptSettings):
                  **kwargs) -> None:
         """Initialization of an instance of the FedoptSettings object. Requires choosing the initialization method.
         Can be initialized either from a dictionary containing all the relevant key-words or from the 
-        manual launch. It is highly advised that the Settings object should be initialized from the dicitonary.
-        It inherits all the properties and attributes from the Parent class addting an additional Optimizer settings.
+        manual launch. It is highly advised that the Settings object should be initialized from the dictionary.
+        It inherits all the properties and attributes from the Parent class adopting an additional Optimizer settings.
         
         Parameters
         ----------
